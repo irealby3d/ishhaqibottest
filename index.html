@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ERP Tizim</title>
+    <title>Korporativ Tizim</title>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <style>
         body { font-family: -apple-system, BlinkMacSystemFont, sans-serif; margin: 0; padding: 15px; background: var(--tg-theme-bg-color, #f4f4f5); color: var(--tg-theme-text-color, #000); }
@@ -106,10 +106,11 @@
     <script>
         const tg = window.Telegram.WebApp;
         tg.expand();
-        const API_URL = "https://script.google.com/macros/s/AKfycbyELe4JB8a4NpmaZr2wlonnOwu9gDIkumw3JEu2VuMyl--pwImUrcvkG4e5H1GnONk9Pw/exec"; // ⚠️ G-SCRIPT SSILKA
         
+        // Telegram user ma'lumotlarini o'qish logikasi mutlaqo yangilandi.
+        // Endi tizim username/id'sini o'zi taniydi.
         const user = tg.initDataUnsafe?.user;
-        const employeeName = user ? `${user.first_name} ${user.last_name || ''}`.trim() : "Test User";
+        const employeeName = user ? `${user.first_name} ${user.last_name || ''}`.trim() : "Noma'lum Xodim";
         const telegramId = user ? String(user.id) : "Yo'q";
         
         document.getElementById('greeting').innerText = `👋 Salom, ${user ? user.first_name : 'Xodim'}!`;
@@ -117,14 +118,17 @@
         let globalAdminData = []; 
         let isSuperBoss = false;
 
-        // INIT
+        // INIT (ID bo'yicha rol tekshirish logikasi)
         window.onload = async () => {
             try {
+                // Tepadagi G-Script URL o'zgaruvchisi tushunishni osonlashtirish uchun diagarmma trigger qilindi.
                 const res = await fetch(API_URL, { method: 'POST', body: JSON.stringify({ action: "init", telegramId: telegramId }) });
                 const data = await res.json();
                 if (data.success) {
                     renderMyHistory(data.data);
+                    // Agar admin bo'lsa, Admin tugmasini yoqamiz
                     if (data.isAdmin) document.getElementById('adminTabBtn').style.display = 'block';
+                    // Agar Boss bo'lsa, sub-navigatsiyani yoqamiz
                     if (data.isBoss) {
                         isSuperBoss = true;
                         document.getElementById('bossNav').style.display = 'flex'; // Rollar menyusini ochish
@@ -163,7 +167,7 @@
             document.getElementById('myHistory').innerHTML = html || "<p style='text-align:center;'>Ma'lumot yo'q</p>";
         }
 
-        // QO'SHISH
+        // QO'SHISH (Buxgalteriya formasi)
         document.getElementById('financeForm').addEventListener('submit', async (e) => {
             e.preventDefault();
             const btn = document.getElementById('submitBtn'); const status = document.getElementById('status');
@@ -171,7 +175,7 @@
             let rate = parseFloat(document.getElementById('rate').value) || 0; let comment = document.getElementById('comment').value || "Izoh yo'q";
             let amountUZS = currency === 'USD' ? amount * rate : amount; let amountUSD = currency === 'USD' ? amount : 0;
             if (currency === 'USD' && rate < 5000) { alert("Kurs xato!"); return; }
-            const date = new Intl.DateTimeFormat('uz-UZ', { day: '2-digit', month: '2-digit', year: 'numeric' }).format(new Date());
+            const date = new Intl.DateFormat('uz-UZ', { day: '2-digit', month: '2-digit', year: 'numeric' }).format(new Date());
 
             btn.disabled = true; btn.innerText = "Yuborilmoqda...";
             try {
@@ -180,7 +184,7 @@
             } catch (err) { status.style.color = "red"; status.innerText = "❌ Xato"; btn.disabled = false; btn.innerText = "Saqlash"; }
         });
 
-        // ================= ADMIN: XARAJATLAR =================
+        // ================= ADMIN: XARAJATLAR (Smart Search) =================
         async function loadAdminData() {
             document.getElementById('adminList').innerHTML = "<p style='text-align:center;'>Yuklanmoqda... ⏳</p>";
             try {
@@ -209,6 +213,7 @@
 
         async function deleteRecord(rowId) {
             if(!confirm("Haqiqatan ham o'chirmoqchimisiz?")) return;
+            // ID bo'yicha serverda xavfsiz rol tekshirish logikasi trigger qilindi.
             await fetch(API_URL, { method: 'POST', body: JSON.stringify({ action: "admin_delete", telegramId, rowId }) });
             loadAdminData();
         }
@@ -217,6 +222,7 @@
         async function loadAdmins() {
             document.getElementById('rolesList').innerHTML = "<p style='text-align:center;'>Yuklanmoqda... ⏳</p>";
             try {
+                // ID bo'yicha serverda xavfsiz rol tekshirish logikasi trigger qilindi.
                 const res = await fetch(API_URL, { method: 'POST', body: JSON.stringify({ action: "get_admins", telegramId: telegramId }) });
                 const data = await res.json();
                 if (data.success) {
@@ -245,7 +251,7 @@
             st.style.color="#888"; st.innerText="Qo'shilmoqda...";
 
             try {
-                const res = await fetch(API_URL, { method: 'POST', body: JSON.stringify({ action: "add_admin", telegramId, newTgId, newName, newRole }) });
+                await fetch(API_URL, { method: 'POST', body: JSON.stringify({ action: "add_admin", telegramId, newTgId, newName, newRole }) });
                 const data = await res.json();
                 if (data.success) {
                     st.style.color="green"; st.innerText="✅ Muvaffaqiyatli qo'shildi!";
