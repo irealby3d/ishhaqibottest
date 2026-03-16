@@ -29,56 +29,52 @@ function applyMyFilters() {
 }
 
 function drawMyHistoryUI() {
-    let tUZS = 0, tUSD = 0, tTotalBudget = 0, html = '';
+    let tUZS = 0, tUSD = 0, tTotal = 0, html = '';
 
     [...myFilteredRecords].reverse().forEach(r => {
         const uzs = Number(r.amountUZS) || 0;
         const usd = Number(r.amountUSD) || 0;
-
-        // amountUZS backend tomonidan (USD * Rate) sifatida saqlanadi
-        tTotalBudget += uzs;
-        if (usd > 0) tUSD += usd;
-        else         tUZS += uzs;
+        tTotal += uzs;
+        if (usd > 0) tUSD += usd; else tUZS += uzs;
 
         html += `
-        <div class="history-item" style="flex-direction:column;align-items:stretch;">
-            <div style="display:flex;justify-content:space-between;margin-bottom:4px;">
-                <span style="font-weight:600;">${r.comment}</span>
-                <span style="font-size:11px;color:#888;">📅 ${r.date}</span>
+        <div class="history-item">
+            <div class="item-header">
+                <span class="item-name">📝 ${r.comment || '—'}</span>
+                <span class="item-date">${r.date || '—'}</span>
             </div>
-            <div style="text-align:right;">
-                ${uzs > 0 ? `<div style="color:#2e7d32;font-weight:bold;">${uzs.toLocaleString()} UZS</div>` : ''}
-                ${usd > 0 ? `<div style="color:#e65100;font-weight:bold;">$${usd.toLocaleString()}</div>`    : ''}
+            <div class="item-amounts">
+                ${uzs > 0 ? `<span class="amount-chip uzs">💰 ${uzs.toLocaleString()} UZS</span>` : ''}
+                ${usd > 0 ? `<span class="amount-chip usd">💵 $${usd.toLocaleString()}</span>`    : ''}
             </div>
         </div>`;
     });
 
-    // FIX: myUzs va myUsd ham yangilanadi (avval yo'q edi)
-    const uzsEl    = document.getElementById('myUzs');
-    const usdEl    = document.getElementById('myUsd');
-    const budgetEl = document.getElementById('myTotalBudget');
+    const uzsEl = document.getElementById('myUzs');
+    const usdEl = document.getElementById('myUsd');
+    const totEl = document.getElementById('myTotalBudget');
 
-    if (uzsEl)    uzsEl.innerText    = tUZS.toLocaleString();
-    if (usdEl)    usdEl.innerText    = '$' + tUSD.toLocaleString();
-    if (budgetEl) budgetEl.innerText = tTotalBudget.toLocaleString() + " UZS";
+    if (uzsEl) uzsEl.innerText = tUZS.toLocaleString();
+    if (usdEl) usdEl.innerText = '$' + tUSD.toLocaleString();
+    if (totEl) totEl.innerText = tTotal.toLocaleString() + " UZS";
 
     document.getElementById('myHistory').innerHTML =
-        html || "<p class='text-center' style='color:#888;'>Hali hech qanday xarajat yo'q</p>";
+        html || `<div class="empty-state"><div class="empty-icon">💸</div><p>Hali hech qanday xarajat yo'q</p></div>`;
 }
 
-// ================= YANGI XARAJAT QO'SHISH =================
+// ================= YANGI XARAJAT =================
 document.getElementById('financeForm').addEventListener('submit', async (e) => {
     e.preventDefault();
     const btn    = document.getElementById('submitBtn');
     const status = document.getElementById('status');
 
-    let amount   = parseFloat(document.getElementById('amount').value);
-    let currency = document.getElementById('currency').value;
-    let rate     = parseFloat(document.getElementById('rate').value) || 0;
-    let comment  = document.getElementById('comment').value || "Izoh yo'q";
+    const amount   = parseFloat(document.getElementById('amount').value);
+    const currency = document.getElementById('currency').value;
+    const rate     = parseFloat(document.getElementById('rate').value) || 0;
+    const comment  = document.getElementById('comment').value || "Izoh yo'q";
 
-    let amountUZS = currency === 'USD' ? amount * rate : amount;
-    let amountUSD = currency === 'USD' ? amount : 0;
+    const amountUZS = currency === 'USD' ? amount * rate : amount;
+    const amountUSD = currency === 'USD' ? amount : 0;
 
     if (currency === 'USD' && rate < 5000) {
         return alert("Iltimos, to'g'ri kursni kiriting!");
@@ -88,22 +84,21 @@ document.getElementById('financeForm').addEventListener('submit', async (e) => {
         day: '2-digit', month: '2-digit', year: 'numeric'
     }).format(new Date());
 
-    btn.disabled = true;
-    btn.innerText = "Yuborilmoqda...";
+    btn.disabled  = true;
+    btn.innerText = "⏳ Yuborilmoqda...";
 
     try {
         await fetch(API_URL, {
             method: "POST",
-            body: JSON.stringify({
-                action: "add", employeeName, telegramId,
-                amountUZS, amountUSD, rate, comment, date
-            })
+            body: JSON.stringify({ action: "add", employeeName, telegramId, amountUZS, amountUSD, rate, comment, date })
         });
-        if (status) { status.style.color = "green"; status.innerText = "✅ Tizimga saqlandi!"; }
-        setTimeout(() => window.location.reload(), 1000);
-    } catch (err) {
-        if (status) { status.style.color = "red"; status.innerText = "❌ Xato yuz berdi"; }
-        btn.disabled = false;
-        btn.innerText = "Saqlash";
+        status.style.color = "var(--green-dark)";
+        status.innerText   = "✅ Tizimga muvaffaqiyatli saqlandi!";
+        setTimeout(() => window.location.reload(), 1200);
+    } catch {
+        status.style.color = "var(--red)";
+        status.innerText   = "❌ Xato yuz berdi. Qayta urining.";
+        btn.disabled  = false;
+        btn.innerText = "💾 Saqlash";
     }
 });
