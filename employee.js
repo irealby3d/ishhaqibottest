@@ -32,10 +32,17 @@ function drawMyHistoryUI() {
     let tUZS = 0, tUSD = 0, tTotal = 0, html = '';
 
     [...myFilteredRecords].reverse().forEach(r => {
-        const uzs = Number(r.amountUZS) || 0;
-        const usd = Number(r.amountUSD) || 0;
+        const uzs  = Number(r.amountUZS) || 0;
+        const usd  = Number(r.amountUSD) || 0;
+        const rate = Number(r.rate)      || 0;
+
         tTotal += uzs;
         if (usd > 0) tUSD += usd; else tUZS += uzs;
+
+        // FIX 1: dollar bo'lsa kursni ham ko'rsatamiz
+        const rateChip = (usd > 0 && rate > 0)
+            ? `<span class="rate-tag">📈 Kurs: ${rate.toLocaleString()} UZS</span>`
+            : '';
 
         html += `
         <div class="history-item">
@@ -46,6 +53,7 @@ function drawMyHistoryUI() {
             <div class="item-amounts">
                 ${uzs > 0 ? `<span class="amount-chip uzs">💰 ${uzs.toLocaleString()} UZS</span>` : ''}
                 ${usd > 0 ? `<span class="amount-chip usd">💵 $${usd.toLocaleString()}</span>`    : ''}
+                ${rateChip}
             </div>
         </div>`;
     });
