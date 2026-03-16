@@ -203,9 +203,25 @@ function applyFilters() {
 }
 
 function calculateTotal() {
-    let totalUZS = 0;
-    filteredData.forEach(r => { totalUZS += Number(r.amountUZS) || 0; });
-    document.getElementById('totalCompanyUzs').innerText = totalUZS.toLocaleString() + " UZS";
+    let totalBudget = 0;
+    
+    // filteredData ichidagi barcha amountUZS larni qo'shib chiqamiz
+    // Bu yerda dollarlar allaqachon so'mga aylangan bo'ladi (backend hisobi bo'yicha)
+    filteredData.forEach(r => {
+        totalBudget += Number(r.amountUZS) || 0;
+    });
+
+    // Ekranga chiqarish
+    const budgetElement = document.getElementById('totalCompanyUzs');
+    if (budgetElement) {
+        budgetElement.innerText = totalBudget.toLocaleString() + " UZS";
+    }
+
+    // Filtrlangan amallar sonini ham yangilab qo'yamize
+    const countElement = document.getElementById('filteredCount');
+    if (countElement) {
+        countElement.innerText = filteredData.length;
+    }
 }
 
 // Sahifalarga bo'lib chizish
