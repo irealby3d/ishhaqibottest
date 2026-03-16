@@ -1,16 +1,15 @@
-// 2. Dastlabki yuklanish (Init)
+// ================= 2. DASTLABKI YUKLANISH =================
 window.onload = async () => {
     document.getElementById('greeting').innerText = `Salom, ${user ? user.first_name : 'Xodim'}!`;
     try {
-        const res = await fetch(API_URL, { method: 'POST', body: JSON.stringify({ action: "init", telegramId }) });
+        const res  = await fetch(API_URL, { method: 'POST', body: JSON.stringify({ action: "init", telegramId }) });
         const data = await res.json();
         if (data.success) {
             myFullRecords = data.data;
-            initMyFilters(); // Shaxsiy filtrlarni tayyorlash
-            
-            // Rollarni aniqlash
-            if (data.isBoss) myRole = 'Boss';
-            else if (data.isAdmin) myRole = 'Admin';
+            initMyFilters();
+
+            if (data.isBoss)      myRole = 'Boss';
+            else if (data.isAdmin)    myRole = 'Admin';
             else if (data.isDirector) myRole = 'Direktor';
 
             if (myRole !== 'User') document.getElementById('nav-admin').classList.remove('hidden');
@@ -19,13 +18,19 @@ window.onload = async () => {
     } catch (e) { console.error("Yuklashda xato:", e); }
 };
 
-// Menyularni almashtirish
+// ================= NAVIGATSIYA =================
 function switchTab(tabId, navId) {
     document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
     document.getElementById(tabId).classList.add('active');
+
     document.querySelectorAll('.nav-item').forEach(b => b.classList.remove('active'));
-    if(navId !== 'nav-add') document.getElementById(navId).classList.add('active');
-    if (tabId === 'adminTab') loadAdminData();
+    if (navId !== 'nav-add') {
+        const navEl = document.getElementById(navId);
+        if (navEl) navEl.classList.add('active');
+    }
+
+    if (tabId === 'adminTab')     loadAdminData();
+    if (tabId === 'dashboardTab') loadDashboard();
 }
 
 function switchAdminSub(areaId, btn) {
@@ -36,7 +41,7 @@ function switchAdminSub(areaId, btn) {
     btn.classList.add('active');
 }
 
-function toggleRate() { 
+function toggleRate() {
     const isUsd = document.getElementById('currency').value === 'USD';
     document.getElementById('rateDiv').classList.toggle('hidden', !isUsd);
 }
