@@ -250,24 +250,70 @@ function goToPage(page) {
 
 // ================= 6. EXCEL (.XLSX) YUKLAB OLISH =================
 function exportToExcel() {
-    if(typeof XLSX === 'undefined') return alert("Excel kutubxonasi yuklanmadi!");
-    
-    // Faqat filtrlangan ma'lumotlarni toza qilib olamiz
-    const exportData = filteredData.map(r => ({
-        "Sana": r.date,
-        "Xodimning ismi": r.name,
-        "Izoh": r.comment,
-        "UZS Summa": Number(r.amountUZS) || 0,
-        "USD Summa": Number(r.amountUSD) || 0,
-        "Kurs (Dollar bo'lsa)": Number(r.rate) || 0
-    }));
+    try {
+        // 1. Kutubxona yuklanganini tekshirish
+        if (typeof XLSX === 'undefined') {
+            alert("Xatolik: Excel kutubxonasi yuklanmagan! Internet aloqasini tekshiring.");
+            return;
+        }
 
-    const worksheet = XLSX.utils.json_to_sheet(exportData);
-    worksheet['!cols'] = [ {wch:12}, {wch:25}, {wch:35}, {wch:15}, {wch:15}, {wch:15} ]; // Ustunlar kengligi
-    
-    const workbook = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(workbook, worksheet, "Hisobot");
-    XLSX.writeFile(workbook, `Fintech_Hisobot_${new Date().toISOString().slice(0,10)}.xlsx`);
+        if (filteredData.length === 0) {
+            alert("Eksport qilish uchun ma'lumot yo'q!");
+            return;
+        }
+
+        tg.MainButton.setText("Excel tayyorlanmoqda...").show();
+
+        // 2. Ma'lumotlarni tartiblash
+        const exportData = filteredData.map(r => ({
+            "Sana": r.date || "",
+            "Xodim": r.name || "",
+            "Izoh": r.comment || "",
+            "Summa (UZS)": Number(r.amountUZS) || 0,
+            "Summa (USD)": Number(r.amountUSD) || 0,
+            "Kurs": Number(r.rate) || 0
+        }));
+
+        // 3. Excel varag'ini yaratish
+        const worksheet = XLSX.utils.json_to_sheet(exportData);
+        
+        // Ustunlar kengligini avtomat sozlash
+        worksheet['!cols'] = [
+            {wch: 12}, {wch: 20}, {wch: 30}, {wch: 15}, {wch: 15}, {wch: 10}
+        ];
+
+        const workbook = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(workbook, worksheet, "Hisobot");
+
+        // 4. Faylni yaratish va yuklab olish
+        // Telegram brauzerida yuklab olish uchun binary ko'rinishida yozish xavfsizroq
+        const wbout = XLSX.write(workbook, {bookType: 'xlsx', type: 'binary'});
+
+        function s2ab(s) {
+            const buf = new ArrayBuffer(s.length);
+            const view = new Uint8Array(buf);
+            for (let i = 0; i < s.length; i++) view[i] = s.charCodeAt(i) & 0xFF;
+            return buf;
+        }
+
+        const blob = new Blob([s2ab(wbout)], {type: "application/octet-stream"});
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = `Hisobot_${new Date().toISOString().slice(0,10)}.xlsx`;
+        document.body.appendChild(a);
+        a.click();
+        window.URL.revokeObjectURL(url);
+        document.body.removeChild(a);
+
+        tg.MainButton.hide();
+        alert("Excel fayl yuklab olishga yuborildi!");
+
+    } catch (error) {
+        console.error("Excel xatosi:", error);
+        alert("Excel yaratishda xato: " + error.message);
+        tg.MainButton.hide();
+    }
 }
 
 // ================= 7. TAHRIRLASH VA O'CHIRISH (Modal Logic) =================
