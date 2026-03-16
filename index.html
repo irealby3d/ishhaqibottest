@@ -11,25 +11,40 @@
 <body>
     <div class="container">
         <div id="reportTab" class="tab-content active">
-            <h2 id="greeting">Salom, Xodim!</h2>
-            <div class="summary-cards" style="flex-wrap: wrap;">
-    <div class="s-card uzs">
-        <div style="font-size:12px; opacity:0.9;">Faqat So'm (UZS)</div>
-        <div id="myUzs" style="font-size:18px; margin-top:5px;">0</div>
-    </div>
-    <div class="s-card usd">
-        <div style="font-size:12px; opacity:0.9;">Faqat Dollar (USD)</div>
-        <div id="myUsd" style="font-size:18px; margin-top:5px;">$0</div>
-    </div>
+    <h2 id="greeting" style="margin-top: 5px;">Salom, Xodim!</h2>
     
-    <div class="s-card budget" style="background: linear-gradient(135deg, #1e3c72, #2a5298); width: 100%; margin-top: 10px; flex: none;">
-        <div style="font-size:12px; opacity:0.9;">Jami Budjet (Barchasi So'mda)</div>
-        <div id="myTotalBudget" style="font-size:22px; margin-top:5px; font-weight: 800;">0 UZS</div>
-    </div>
-</div>
-            <h4>Oxirgi amallarim</h4>
-            <div id="myHistory"></div>
+    <div class="summary-cards" style="flex-wrap: wrap;">
+        <div class="s-card uzs"><div>So'm</div><div id="myUzs">0</div></div>
+        <div class="s-card usd"><div>Dollar</div><div id="myUsd">$0</div></div>
+        <div class="s-card budget" style="background: linear-gradient(135deg, #1e3c72, #2a5298); width: 100%; margin-top: 10px; flex: none;">
+            <div>Jami Budjet (So'mda)</div>
+            <div id="myTotalBudget" style="font-size:22px; margin-top:5px; font-weight: 800;">0 UZS</div>
         </div>
+    </div>
+
+    <div class="card" style="padding: 12px; margin-top: 15px;">
+        <div style="display: flex; gap: 8px; margin-bottom: 10px;">
+            <select id="myFilterMonth" onchange="applyMyFilters()" style="padding: 8px; font-size: 13px;">
+                <option value="all">Barcha oylar</option>
+                <option value="01">Yanvar</option><option value="02">Fevral</option>
+                <option value="03">Mart</option><option value="04">Aprel</option>
+                <option value="05">May</option><option value="06">Iyun</option>
+                <option value="07">Iyul</option><option value="08">Avgust</option>
+                <option value="09">Sentyabr</option><option value="10">Oktyabr</option>
+                <option value="11">Noyabr</option><option value="12">Dekabr</option>
+            </select>
+            <select id="myFilterYear" onchange="applyMyFilters()" style="padding: 8px; font-size: 13px;">
+                <option value="all">Yillar</option>
+            </select>
+        </div>
+        <button class="btn-main" onclick="exportMyExcel()" style="margin-top: 0; padding: 10px; font-size: 14px; background: #2a5298;">
+            📥 O'z hisobotimni yuklab olish (XLSX)
+        </button>
+    </div>
+
+    <h4 style="color:#555; margin-bottom: 8px;">Amallar ro'yxati</h4>
+    <div id="myHistory"></div>
+</div>
 
         <div id="addTab" class="tab-content">
             <div class="card">
