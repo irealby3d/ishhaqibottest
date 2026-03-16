@@ -1,31 +1,62 @@
-// 6. Tahrirlash va O'chirish
-function openEdit(rowId, uzs, usd, rate, comment, name, date) {
-    document.getElementById('editRowId').value = rowId;
-    document.getElementById('editAmountUZS').value = uzs;
-    document.getElementById('editAmountUSD').value = usd;
-    document.getElementById('editRate').value = rate;
-    document.getElementById('editComment').value = comment;
-    document.getElementById('editHeaderName').innerText = "👤 " + name;
-    document.getElementById('editHeaderDate').innerText = "📅 " + date;
+// ================= TAHRIRLASH VA O'CHIRISH =================
+
+// ASOSIY TUZATISH: rowId bo'yicha globalAdminData dan topadi
+// onclick="openEdit(rowId)" - string escape muammosi yo'q
+function openEdit(rowId) {
+    const r = globalAdminData.find(x => String(x.rowId) === String(rowId));
+    if (!r) return;
+
+    document.getElementById('editRowId').value    = r.rowId;
+    document.getElementById('editAmountUZS').value = r.amountUZS || '';
+    document.getElementById('editAmountUSD').value = r.amountUSD || '';
+    document.getElementById('editRate').value      = r.rate || '';
+    document.getElementById('editComment').value   = r.comment || '';
+
+    const headerName = document.getElementById('editHeaderName');
+    const headerDate = document.getElementById('editHeaderDate');
+    if (headerName) headerName.innerText = r.name  || '—';
+    if (headerDate) headerDate.innerText = r.date  || '—';
+
     document.getElementById('editModal').classList.remove('hidden');
-    tg.HapticFeedback.impactOccurred('medium');
+
+    if (tg && tg.HapticFeedback) {
+        tg.HapticFeedback.impactOccurred('medium');
+    }
+}
+
+function closeModal() {
+    document.getElementById('editModal').classList.add('hidden');
 }
 
 async function saveEdit() {
-    const payload = {
-        action: "admin_edit", telegramId,
-        rowId: document.getElementById('editRowId').value,
-        amountUZS: document.getElementById('editAmountUZS').value,
-        amountUSD: document.getElementById('editAmountUSD').value,
-        rate: document.getElementById('editRate').value,
-        comment: document.getElementById('editComment').value
-    };
-    await fetch(API_URL, { method: 'POST', body: JSON.stringify(payload) });
-    window.location.reload();
+    const rowId     = document.getElementById('editRowId').value;
+    const amountUZS = document.getElementById('editAmountUZS').value;
+    const amountUSD = document.getElementById('editAmountUSD').value;
+    const rate      = document.getElementById('editRate').value;
+    const comment   = document.getElementById('editComment').value;
+
+    closeModal();
+    document.getElementById('adminList').innerHTML = `
+        <div class="skeleton skeleton-item"></div>
+        <div class="skeleton skeleton-item"></div>`;
+
+    await fetch(API_URL, {
+        method: 'POST',
+        body: JSON.stringify({ action: "admin_edit", telegramId, rowId, amountUZS, amountUSD, rate, comment })
+    });
+    loadAdminData();
 }
 
 async function deleteRecord(rowId) {
-    if(!confirm("O'chirishga ishonchingiz komilmi?")) return;
-    await fetch(API_URL, { method: 'POST', body: JSON.stringify({ action: "admin_delete", telegramId, rowId }) });
+    if (!confirm("Ushbu ma'lumotni o'chirishga ishonchingiz komilmi?")) return;
+
+    document.getElementById('adminList').innerHTML = `
+        <div class="skeleton skeleton-item"></div>
+        <div class="skeleton skeleton-item"></div>`;
+
+    await fetch(API_URL, {
+        method: 'POST',
+        body: JSON.stringify({ action: "admin_delete", telegramId, rowId })
+    });
     loadAdminData();
 }
