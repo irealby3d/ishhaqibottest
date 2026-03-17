@@ -1,18 +1,35 @@
-// 1. API va Telegram Sozlamalari
-const API_URL = "https://script.google.com/macros/s/AKfycbyELe4JB8a4NpmaZr2wlonnOwu9gDIkumw3JEu2VuMyl--pwImUrcvkG4e5H1GnONk9Pw/exec"; 
+// =========================================================
+// ⚠️ DIQQAT! GOOGLE SCRIPT SSILKASINI SHU YERGA QO'YASIZ!
+// =========================================================
+const API_URL = "https://script.google.com/macros/s/AKfycbyELe4JB8a4NpmaZr2wlonnOwu9gDIkumw3JEu2VuMyl--pwImUrcvkG4e5H1GnONk9Pw/exec";
+
 const tg = window.Telegram.WebApp;
 tg.expand();
 
-// Foydalanuvchi ma'lumotlari
-const user = tg.initDataUnsafe?.user;
+const user         = tg.initDataUnsafe?.user;
 const employeeName = user ? `${user.first_name} ${user.last_name || ''}`.trim() : "Test User";
-const telegramId = user ? String(user.id) : "Yo'q";
+const telegramId   = user ? String(user.id) : "Yo'q";
 
-// Global O'zgaruvchilar
-let globalAdminData = [];   // Barcha admin ma'lumotlari
-let filteredData = [];      // Filtrlangan admin ma'lumotlari
-let myFullRecords = [];     // Xodimning shaxsiy ma'lumotlari
-let myFilteredRecords = []; // Xodimning filtrlangan ma'lumotlari
-let currentPage = 1;        // Paginatsiya uchun
-const ITEMS_PER_PAGE = 10; 
-let myRole = 'User';        // Foydalanuvchi roli
+// Global state
+let globalAdminData   = [];
+let filteredData      = [];
+let myFullRecords     = [];
+let myFilteredRecords = [];
+let currentPage       = 1;
+const ITEMS_PER_PAGE  = 10;
+
+// Rollar:
+// 'SuperAdmin' — to'liq huquq (Boss)
+// 'Admin'      — faqat o'zini dashboardi + ruhsat berilgan amalni ko'rish/tahrirlash/o'chirish
+// 'Direktor'   — barcha amallarni ko'radi, yuklab oladi, dashboard, LEKIN tahrirlash/o'chirish yo'q
+// 'User'       — faqat o'z amallar + o'z dashboardi
+let myRole = 'User';
+
+// Admin ruhsatlari (backend dan keladi)
+let myPermissions = {
+    canViewAll:   false,  // barcha xodimlar amallarini ko'rish
+    canEdit:      false,  // tahrirlash
+    canDelete:    false,  // o'chirish
+    canExport:    false,  // excel yuklab olish
+    canViewDashboard: false, // dashboard
+};
