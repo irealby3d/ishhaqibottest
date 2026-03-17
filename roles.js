@@ -14,16 +14,23 @@ async function loadAdmins() {
                 const isAdmin    = r.role === 'Admin';
                 const perms      = r.permissions || {};
 
-                // Admin uchun ruhsat checkboxlari
+                // Admin uchun ruhsat checkboxlari (collapsible)
                 const permHtml = isAdmin ? `
-                <div class="perm-grid">
-                    ${permCheck(r.rowId,'canViewAll',  perms.canViewAll,  "👁 Hammasini ko'rish")}
-                    ${permCheck(r.rowId,'canEdit',     perms.canEdit,     "✏️ Tahrirlash")}
-                    ${permCheck(r.rowId,'canDelete',   perms.canDelete,   "🗑 O'chirish")}
-                    ${permCheck(r.rowId,'canExport',   perms.canExport,   "📥 Excel")}
-                    ${permCheck(r.rowId,'canViewDashboard', perms.canViewDashboard, "📈 Dashboard")}
+                <button class="perm-toggle-btn" id="ptbtn_${r.rowId}"
+                        onclick="togglePermBlock(${r.rowId})">
+                    <span>🔐 Ruhsatlarni sozlash</span>
+                    <span class="perm-arrow">▼</span>
+                </button>
+                <div class="perm-body" id="pbody_${r.rowId}">
+                    <div class="perm-grid">
+                        ${permCheck(r.rowId,'canViewAll',  perms.canViewAll,  "👁 Hammasini ko'rish")}
+                        ${permCheck(r.rowId,'canEdit',     perms.canEdit,     "✏️ Tahrirlash")}
+                        ${permCheck(r.rowId,'canDelete',   perms.canDelete,   "🗑 O'chirish")}
+                        ${permCheck(r.rowId,'canExport',   perms.canExport,   "📥 Excel")}
+                        ${permCheck(r.rowId,'canViewDashboard', perms.canViewDashboard, "📈 Dashboard")}
+                    </div>
+                    <button class="perm-save-btn" onclick="savePermissions(${r.rowId})">💾 Saqlash</button>
                 </div>
-                <button class="perm-save-btn" onclick="savePermissions(${r.rowId})">💾 Saqlash</button>
                 ` : '';
 
                 html += `
@@ -51,10 +58,24 @@ async function loadAdmins() {
 }
 
 function permCheck(rowId, field, val, label) {
-    return `<label class="perm-label">
-        <input type="checkbox" id="perm_${rowId}_${field}" ${val?'checked':''}>
+    const id = `perm_${rowId}_${field}`;
+    return `<label class="perm-label ${val?'checked':''}" id="lbl_${id}"
+                   onclick="togglePermLabel(this, '${id}')">
+        <input type="checkbox" id="${id}" ${val?'checked':''}
+               onclick="event.stopPropagation();syncPermLabel(this)">
         <span>${label}</span>
     </label>`;
+}
+
+function togglePermLabel(lbl, cbId) {
+    const cb = document.getElementById(cbId);
+    cb.checked = !cb.checked;
+    syncPermLabel(cb);
+}
+
+function syncPermLabel(cb) {
+    const lbl = cb.closest('.perm-label');
+    if (lbl) lbl.classList.toggle('checked', cb.checked);
 }
 
 async function savePermissions(rowId) {
@@ -75,6 +96,15 @@ async function savePermissions(rowId) {
     } catch {
         showToast('❌ Server xatosi', true);
     }
+}
+
+function togglePermBlock(rowId) {
+    const btn  = document.getElementById('ptbtn_' + rowId);
+    const body = document.getElementById('pbody_' + rowId);
+    if (!btn || !body) return;
+    const isOpen = body.classList.toggle('open');
+    btn.classList.toggle('open', isOpen);
+    if (tg && tg.HapticFeedback) tg.HapticFeedback.impactOccurred('light');
 }
 
 function showToast(msg, isErr=false) {
