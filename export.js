@@ -147,7 +147,7 @@ async function exportToBot(dataList, fileNameBase) {
         tg.MainButton.hide();
 
         if (result.success) {
-            tg.showAlert("✅ Hisobot shaxsiy xabaringizga yuborildi!");
+            tg.showAlert("✅ Hisobot shaxsiy xabaringizga (Botdan) yuborildi!");
         } else {
             throw new Error(result.error || "Yuborishda xatolik");
         }
