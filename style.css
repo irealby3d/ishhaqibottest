@@ -1167,3 +1167,53 @@ textarea { resize: vertical; min-height: 80px; }
 }
 .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
 .toast.toast-err { background: var(--red); }
+
+/* ============================================================
+   RUXSAT OGOHLANTIRISHI
+   ============================================================ */
+.perm-warning {
+    background: linear-gradient(135deg, #FFF7ED, #FEF3C7);
+    border: 2px solid #F59E0B;
+    border-radius: var(--radius);
+    padding: 32px 24px;
+    text-align: center;
+    margin: 20px 0;
+}
+.perm-warn-icon  { font-size: 48px; margin-bottom: 14px; }
+.perm-warn-title { font-size: 17px; font-weight: 800; color: #92400E; margin-bottom: 8px; }
+.perm-warn-desc  { font-size: 14px; color: #78350F; line-height: 1.5; font-weight: 500; }
+
+/* ============================================================
+   HODIMLAR RUXSATLAR GRID
+   ============================================================ */
+.hodim-perms-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 6px;
+    margin: 10px 0;
+    background: var(--bg);
+    border-radius: var(--radius-sm);
+    padding: 10px;
+}
+
+/* ============================================================
+   IOS / iPhone moslik
+   ============================================================ */
+* { -webkit-tap-highlight-color: transparent; }
+input, select, textarea, button {
+    -webkit-appearance: none;
+    border-radius: var(--radius-sm);
+}
+/* iOS safe area */
+.bottom-nav {
+    padding-bottom: max(8px, env(safe-area-inset-bottom));
+}
+.container {
+    padding-bottom: max(100px, calc(80px + env(safe-area-inset-bottom)));
+}
+/* iOS scroll smooth */
+body { -webkit-overflow-scrolling: touch; }
+
+/* Prevent zoom on input focus (iOS) */
+input, select, textarea { font-size: 16px !important; }
+.input-group label { font-size: 12px !important; }
