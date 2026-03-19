@@ -1,3 +1,12 @@
+function toggleHodimPerms(tgId) {
+    const btn  = document.getElementById('hbtn_'  + tgId);
+    const body = document.getElementById('hbody_' + tgId);
+    if (!btn || !body) return;
+    const isOpen = body.classList.toggle('open');
+    btn.classList.toggle('open', isOpen);
+    if (tg && tg.HapticFeedback) tg.HapticFeedback.impactOccurred('light');
+}
+
 // ============================================================
 // roles.js — Hodimlar boshqaruvi (SuperAdmin)
 // ============================================================
@@ -44,7 +53,7 @@ async function loadHodimlar() {
                     <label style="font-size:11px;font-weight:700;color:var(--text-muted);
                                   text-transform:uppercase;letter-spacing:0.5px;
                                   display:block;margin-bottom:5px;">
-                        👤 Ko'rsatiladigan ism (laqab)
+                        👤 Ko'rsatiladigan ism (UserName)
                     </label>
                     <input type="text"
                            id="uname_${h.tgId}"
@@ -55,24 +64,26 @@ async function loadHodimlar() {
                                   font-family:var(--font);background:#FAFBFD;">
                 </div>
 
-                <!-- Ruxsatlar -->
-                <div style="font-size:11px;font-weight:700;color:var(--text-muted);
-                             text-transform:uppercase;letter-spacing:0.5px;margin-bottom:6px;">
-                    🔐 Ruxsatlar
+                <!-- Ruxsatlar — collapsible -->
+                <button class="perm-toggle-btn" id="hbtn_${h.tgId}"
+                        onclick="toggleHodimPerms('${h.tgId}')">
+                    <span>🔐 Ruxsatlarni sozlash</span>
+                    <span class="perm-arrow">▼</span>
+                </button>
+                <div class="perm-body" id="hbody_${h.tgId}">
+                    <div class="hodim-perms-grid">
+                        ${permToggle(h.tgId,'canAdd',      h.canAdd,      '➕ Amal qo\'shish')}
+                        ${permToggle(h.tgId,'isSuperAdmin',h.isSuperAdmin,'👑 SuperAdmin')}
+                        ${permToggle(h.tgId,'isDirektor',  h.isDirektor,  '🎯 Direktor')}
+                        ${permToggle(h.tgId,'isAdmin',     h.isAdmin,     '🛡 Admin')}
+                        ${permToggle(h.tgId,'canViewAll',  h.canViewAll,  '👁 Barchasini ko\'rish')}
+                        ${permToggle(h.tgId,'canEdit',     h.canEdit,     '✏️ Tahrirlash')}
+                        ${permToggle(h.tgId,'canDelete',   h.canDelete,   '🗑 O\'chirish')}
+                        ${permToggle(h.tgId,'canExport',   h.canExport,   '📥 Excel')}
+                        ${permToggle(h.tgId,'canViewDash', h.canViewDash, '📈 Dashboard')}
+                    </div>
+                    <button class="perm-save-btn" onclick="saveHodim('${h.tgId}')">💾 Saqlash</button>
                 </div>
-                <div class="hodim-perms-grid">
-                    ${permToggle(h.tgId,'canAdd',      h.canAdd,      '➕ Amal qo\'shish')}
-                    ${permToggle(h.tgId,'isSuperAdmin',h.isSuperAdmin,'👑 SuperAdmin')}
-                    ${permToggle(h.tgId,'isDirektor',  h.isDirektor,  '🎯 Direktor')}
-                    ${permToggle(h.tgId,'isAdmin',     h.isAdmin,     '🛡 Admin')}
-                    ${permToggle(h.tgId,'canViewAll',  h.canViewAll,  '👁 Barchasini ko\'rish')}
-                    ${permToggle(h.tgId,'canEdit',     h.canEdit,     '✏️ Tahrirlash')}
-                    ${permToggle(h.tgId,'canDelete',   h.canDelete,   '🗑 O\'chirish')}
-                    ${permToggle(h.tgId,'canExport',   h.canExport,   '📥 Excel')}
-                    ${permToggle(h.tgId,'canViewDash', h.canViewDash, '📈 Dashboard')}
-                </div>
-
-                <button class="perm-save-btn" onclick="saveHodim('${h.tgId}')">💾 Saqlash</button>
             </div>`;
         });
         list.innerHTML = html;
