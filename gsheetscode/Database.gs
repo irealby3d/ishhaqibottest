@@ -2,10 +2,19 @@
 // DATABASE.GS
 // ============================================================
 // "Hodimlar" sheet ustunlari (0-based):
+// Legacy (0..10):
 //  0:TelegramId | 1:Username | 2:CanAdd
 //  3:SuperAdmin | 4:Direktor | 5:Admin
 //  6:canViewAll | 7:canEdit  | 8:canDelete
 //  9:canExport  | 10:canViewDash
+// New model (11..17):
+//  11:Role
+//  12:OverrideCanAdd
+//  13:OverrideViewAll
+//  14:OverrideEdit
+//  15:OverrideDelete
+//  16:OverrideExport
+//  17:OverrideViewDash
 // ============================================================
 
 var COL = {
@@ -19,7 +28,14 @@ var COL = {
   EDIT:         7,
   DELETE:       8,
   EXPORT:       9,
-  VIEW_DASH:    10
+  VIEW_DASH:    10,
+  ROLE:         11,
+  OVR_CAN_ADD:  12,
+  OVR_VIEW_ALL: 13,
+  OVR_EDIT:     14,
+  OVR_DELETE:   15,
+  OVR_EXPORT:   16,
+  OVR_VIEW_DASH:17
 };
 
 var DATA_COL = {
@@ -39,6 +55,13 @@ var _MEMO = {
   usernameMap: null
 };
 
+var EMP_HEADERS = [
+  "TelegramId","Username","CanAdd",
+  "SuperAdmin","Direktor","Admin",
+  "canViewAll","canEdit","canDelete","canExport","canViewDash",
+  "Role","OverrideCanAdd","OverrideViewAll","OverrideEdit","OverrideDelete","OverrideExport","OverrideViewDash"
+];
+
 function getSheets() {
   if (_MEMO.sheets) return _MEMO.sheets;
 
@@ -52,12 +75,8 @@ function getSheets() {
   var empSheet = ss.getSheetByName("Hodimlar");
   if (!empSheet) {
     empSheet = ss.insertSheet("Hodimlar");
-    empSheet.appendRow([
-      "TelegramId","Username","CanAdd",
-      "SuperAdmin","Direktor","Admin",
-      "canViewAll","canEdit","canDelete","canExport","canViewDash"
-    ]);
-    empSheet.getRange(1,1,1,11)
+    empSheet.appendRow(EMP_HEADERS);
+    empSheet.getRange(1,1,1,EMP_HEADERS.length)
       .setFontWeight("bold")
       .setBackground("#1e3c72")
       .setFontColor("#ffffff");
@@ -66,12 +85,60 @@ function getSheets() {
     if (CONFIG.SUPER_ADMIN_ID && CONFIG.SUPER_ADMIN_NAME) {
       empSheet.appendRow([
         CONFIG.SUPER_ADMIN_ID, CONFIG.SUPER_ADMIN_NAME,
-        1, 1, 0, 0, 1, 1, 1, 1, 1
+        1, 1, 0, 0, 1, 1, 1, 1, 1,
+        'SUPER_ADMIN', 1, 1, 1, 1, 1, 1
       ]);
     }
   }
+
+  ensureEmployeeInfrastructure_(empSheet);
   _MEMO.sheets = { dataSheet: dataSheet, empSheet: empSheet };
   return _MEMO.sheets;
+}
+
+function ensureEmployeeInfrastructure_(empSheet) {
+  if (!empSheet) return;
+  var requiredCols = EMP_HEADERS.length;
+  if (empSheet.getMaxColumns() < requiredCols) {
+    empSheet.insertColumnsAfter(empSheet.getMaxColumns(), requiredCols - empSheet.getMaxColumns());
+  }
+
+  var currentHeaders = empSheet.getRange(1, 1, 1, requiredCols).getValues()[0];
+  var nextHeaders = [];
+  for (var i = 0; i < requiredCols; i++) {
+    nextHeaders.push(EMP_HEADERS[i]);
+  }
+  var needHeaderWrite = false;
+  for (var j = 0; j < requiredCols; j++) {
+    if (String(currentHeaders[j] || '') !== EMP_HEADERS[j]) {
+      needHeaderWrite = true;
+      break;
+    }
+  }
+  if (needHeaderWrite) {
+    empSheet.getRange(1, 1, 1, requiredCols).setValues([nextHeaders]);
+  }
+
+  var lastRow = empSheet.getLastRow();
+  if (lastRow < 2) return;
+
+  // Existing rows may not have role set yet; infer from legacy flags once.
+  var rows = empSheet.getRange(2, 1, lastRow - 1, requiredCols).getValues();
+  var roleUpdates = [];
+  var hasRolePatch = false;
+  for (var r = 0; r < rows.length; r++) {
+    var roleRaw = String(rows[r][COL.ROLE] || '').trim();
+    if (roleRaw) {
+      roleUpdates.push([roleRaw]);
+      continue;
+    }
+    var inferredRole = deriveLegacyRoleFromRow_(rows[r]);
+    roleUpdates.push([inferredRole]);
+    hasRolePatch = true;
+  }
+  if (hasRolePatch) {
+    empSheet.getRange(2, COL.ROLE + 1, roleUpdates.length, 1).setValues(roleUpdates);
+  }
 }
 
 function ensureDataInfrastructure_(dataSheet) {
@@ -190,26 +257,191 @@ function matchesAdminFilters_(name, comment, dateMeta, filters) {
   return true;
 }
 
+function toBool01_(value) {
+  if (value === true || value === 1) return true;
+  var s = String(value || '').toLowerCase().trim();
+  return s === '1' || s === 'true' || s === 'yes';
+}
+
+function parseOverrideBit_(value) {
+  if (value === null || value === undefined) return null;
+  var s = String(value).trim();
+  if (s === '') return null;
+  return toBool01_(value);
+}
+
+function deriveLegacyRoleFromRow_(row) {
+  if (toBool01_(row[COL.SUPER_ADMIN])) return 'SUPER_ADMIN';
+  if (toBool01_(row[COL.DIREKTOR])) return 'DIRECTOR';
+  if (toBool01_(row[COL.ADMIN])) return 'ADMIN';
+  return 'EMPLOYEE';
+}
+
+function normalizeRole_(value, rowForFallback) {
+  var raw = String(value || '').trim().toUpperCase();
+  if (raw === 'SUPER_ADMIN' || raw === 'SUPERADMIN') return 'SUPER_ADMIN';
+  if (raw === 'DIRECTOR' || raw === 'DIREKTOR') return 'DIRECTOR';
+  if (raw === 'ADMIN') return 'ADMIN';
+  if (raw === 'EMPLOYEE' || raw === 'USER') return 'EMPLOYEE';
+  return rowForFallback ? deriveLegacyRoleFromRow_(rowForFallback) : 'EMPLOYEE';
+}
+
+function roleLabelFromKey_(roleKey) {
+  if (roleKey === 'SUPER_ADMIN') return 'SuperAdmin';
+  if (roleKey === 'DIRECTOR') return 'Direktor';
+  if (roleKey === 'ADMIN') return 'Admin';
+  return 'User';
+}
+
+function roleDefaults_(roleKey) {
+  var role = normalizeRole_(roleKey, null);
+  if (role === 'SUPER_ADMIN') {
+    return {
+      canAdd: true,
+      permissions: { canViewAll:true, canEdit:true, canDelete:true, canExport:true, canViewDash:true }
+    };
+  }
+  if (role === 'DIRECTOR') {
+    return {
+      canAdd: true,
+      permissions: { canViewAll:true, canEdit:false, canDelete:false, canExport:true, canViewDash:true }
+    };
+  }
+  if (role === 'ADMIN') {
+    return {
+      canAdd: true,
+      permissions: { canViewAll:false, canEdit:false, canDelete:false, canExport:false, canViewDash:false }
+    };
+  }
+  return {
+    canAdd: true,
+    permissions: { canViewAll:false, canEdit:false, canDelete:false, canExport:false, canViewDash:false }
+  };
+}
+
+function buildModelFromRoleAndOverrides_(roleKey, overrides) {
+  var role = normalizeRole_(roleKey, null);
+  var defaults = roleDefaults_(role);
+  var perms = {
+    canViewAll: defaults.permissions.canViewAll,
+    canEdit: defaults.permissions.canEdit,
+    canDelete: defaults.permissions.canDelete,
+    canExport: defaults.permissions.canExport,
+    canViewDash: defaults.permissions.canViewDash
+  };
+  var canAdd = defaults.canAdd;
+
+  if (overrides && overrides.canAdd !== null) canAdd = overrides.canAdd;
+  if (overrides && overrides.canViewAll !== null) perms.canViewAll = overrides.canViewAll;
+  if (overrides && overrides.canEdit !== null) perms.canEdit = overrides.canEdit;
+  if (overrides && overrides.canDelete !== null) perms.canDelete = overrides.canDelete;
+  if (overrides && overrides.canExport !== null) perms.canExport = overrides.canExport;
+  if (overrides && overrides.canViewDash !== null) perms.canViewDash = overrides.canViewDash;
+
+  // Qat'iy qoidalar
+  if (role === 'SUPER_ADMIN') {
+    canAdd = true;
+    perms.canViewAll = true;
+    perms.canEdit = true;
+    perms.canDelete = true;
+    perms.canExport = true;
+    perms.canViewDash = true;
+  } else if (role === 'DIRECTOR') {
+    perms.canEdit = false;
+    perms.canDelete = false;
+  }
+
+  return {
+    roleKey: role,
+    roleLabel: roleLabelFromKey_(role),
+    canAdd: canAdd,
+    isSuperAdmin: role === 'SUPER_ADMIN',
+    isDirektor: role === 'DIRECTOR',
+    isAdmin: role === 'ADMIN' || role === 'SUPER_ADMIN',
+    permissions: perms,
+    overrides: overrides || {
+      canAdd: null,
+      canViewAll: null,
+      canEdit: null,
+      canDelete: null,
+      canExport: null,
+      canViewDash: null
+    }
+  };
+}
+
+function readOverridesFromRow_(row) {
+  return {
+    canAdd: parseOverrideBit_(row[COL.OVR_CAN_ADD]),
+    canViewAll: parseOverrideBit_(row[COL.OVR_VIEW_ALL]),
+    canEdit: parseOverrideBit_(row[COL.OVR_EDIT]),
+    canDelete: parseOverrideBit_(row[COL.OVR_DELETE]),
+    canExport: parseOverrideBit_(row[COL.OVR_EXPORT]),
+    canViewDash: parseOverrideBit_(row[COL.OVR_VIEW_DASH])
+  };
+}
+
+function hasNewPermissionModel_(row) {
+  if (String(row[COL.ROLE] || '').trim()) return true;
+  return parseOverrideBit_(row[COL.OVR_CAN_ADD]) !== null ||
+         parseOverrideBit_(row[COL.OVR_VIEW_ALL]) !== null ||
+         parseOverrideBit_(row[COL.OVR_EDIT]) !== null ||
+         parseOverrideBit_(row[COL.OVR_DELETE]) !== null ||
+         parseOverrideBit_(row[COL.OVR_EXPORT]) !== null ||
+         parseOverrideBit_(row[COL.OVR_VIEW_DASH]) !== null;
+}
+
+function resolveEmployeeAccessFromRow_(row) {
+  if (!hasNewPermissionModel_(row)) {
+    var legacyRole = deriveLegacyRoleFromRow_(row);
+    return {
+      roleKey: legacyRole,
+      roleLabel: roleLabelFromKey_(legacyRole),
+      canAdd: toBool01_(row[COL.CAN_ADD]),
+      isSuperAdmin: toBool01_(row[COL.SUPER_ADMIN]),
+      isDirektor: toBool01_(row[COL.DIREKTOR]),
+      isAdmin: toBool01_(row[COL.ADMIN]),
+      permissions: {
+        canViewAll: toBool01_(row[COL.VIEW_ALL]),
+        canEdit: toBool01_(row[COL.EDIT]),
+        canDelete: toBool01_(row[COL.DELETE]),
+        canExport: toBool01_(row[COL.EXPORT]),
+        canViewDash: toBool01_(row[COL.VIEW_DASH])
+      },
+      overrides: {
+        canAdd: null,
+        canViewAll: null,
+        canEdit: null,
+        canDelete: null,
+        canExport: null,
+        canViewDash: null
+      }
+    };
+  }
+
+  var role = normalizeRole_(row[COL.ROLE], row);
+  var overrides = readOverridesFromRow_(row);
+  return buildModelFromRoleAndOverrides_(role, overrides);
+}
+
 // ---- Hodim ma'lumotlarini olish ----
 function getEmployee(tgId) {
   var rows = getEmployeeRows_();
   for (var i = 1; i < rows.length; i++) {
     if (String(rows[i][COL.TG_ID]) === String(tgId)) {
+      var access = resolveEmployeeAccessFromRow_(rows[i]);
       return {
         sheetRow:    i + 1,
         tgId:        String(rows[i][COL.TG_ID]),
         username:    String(rows[i][COL.USERNAME] || ''),
-        canAdd:      Number(rows[i][COL.CAN_ADD])      === 1,
-        isSuperAdmin:Number(rows[i][COL.SUPER_ADMIN])  === 1,
-        isDirektor:  Number(rows[i][COL.DIREKTOR])     === 1,
-        isAdmin:     Number(rows[i][COL.ADMIN])        === 1,
-        permissions: {
-          canViewAll:  Number(rows[i][COL.VIEW_ALL])  === 1,
-          canEdit:     Number(rows[i][COL.EDIT])      === 1,
-          canDelete:   Number(rows[i][COL.DELETE])    === 1,
-          canExport:   Number(rows[i][COL.EXPORT])    === 1,
-          canViewDash: Number(rows[i][COL.VIEW_DASH]) === 1
-        }
+        roleKey:     access.roleKey,
+        role:        access.roleLabel,
+        canAdd:      access.canAdd,
+        isSuperAdmin:access.isSuperAdmin,
+        isDirektor:  access.isDirektor,
+        isAdmin:     access.isAdmin,
+        permissions: access.permissions,
+        overrides:   access.overrides
       };
     }
   }
@@ -221,7 +453,7 @@ function checkUserRoles(tgId) {
   var emp = getEmployee(tgId);
 
   var auth = {
-    role: "User", username: "",
+    role: "User", roleKey: "EMPLOYEE", username: "",
     isAdmin: false, isBoss: false,
     isDirector: false, isSuperAdmin: false,
     canAdd: true, // + tugmasi hammaga ko'rinadi
@@ -239,27 +471,13 @@ function checkUserRoles(tgId) {
 
   auth.username   = emp.username;
   auth.canAdd     = emp.canAdd;
-
-  if (emp.isSuperAdmin) {
-    auth.role = "SuperAdmin";
-    auth.isAdmin = true; auth.isBoss = true; auth.isSuperAdmin = true;
-    auth.permissions = {
-      canViewAll:true, canEdit:true,
-      canDelete:true, canExport:true, canViewDash:true
-    };
-  } else if (emp.isDirektor) {
-    auth.role = "Direktor";
-    auth.isDirector = true;
-    auth.permissions = {
-      canViewAll:true, canEdit:false,
-      canDelete:false, canExport:true, canViewDash:true
-    };
-  } else if (emp.isAdmin) {
-    auth.role = "Admin";
-    auth.isAdmin = true;
-    auth.permissions = emp.permissions;
-  }
-
+  auth.role       = emp.role;
+  auth.roleKey    = emp.roleKey;
+  auth.isSuperAdmin = emp.isSuperAdmin;
+  auth.isDirector = emp.isDirektor;
+  auth.isAdmin    = emp.isAdmin;
+  auth.isBoss     = emp.isSuperAdmin;
+  auth.permissions = emp.permissions;
   return auth;
 }
 
@@ -574,24 +792,61 @@ function adminDeleteRecord(rowId, actorTgId) {
 // HODIMLAR BOSHQARUVI (SuperAdmin uchun)
 // ============================================================
 
+function overrideToCellValue_(value) {
+  if (value === null || value === undefined) return '';
+  return value ? 1 : 0;
+}
+
+function resolveRoleAndOverridesFromPayload_(data, fallbackRow) {
+  var roleRaw = data.role;
+  if (!String(roleRaw || '').trim()) {
+    if (toBool01_(data.isSuperAdmin)) roleRaw = 'SUPER_ADMIN';
+    else if (toBool01_(data.isDirektor)) roleRaw = 'DIRECTOR';
+    else if (toBool01_(data.isAdmin)) roleRaw = 'ADMIN';
+  }
+  var role = normalizeRole_(roleRaw, fallbackRow || null);
+  var overrides = {
+    canAdd: parseOverrideBit_(data.canAdd),
+    canViewAll: parseOverrideBit_(data.canViewAll),
+    canEdit: parseOverrideBit_(data.canEdit),
+    canDelete: parseOverrideBit_(data.canDelete),
+    canExport: parseOverrideBit_(data.canExport),
+    canViewDash: parseOverrideBit_(data.canViewDash)
+  };
+  return {
+    role: role,
+    overrides: overrides,
+    effective: buildModelFromRoleAndOverrides_(role, overrides)
+  };
+}
+
 function getHodimlar() {
   var rows     = getEmployeeRows_();
   var result   = [];
   for (var i = 1; i < rows.length; i++) {
     if (!rows[i][0]) continue;
+    var access = resolveEmployeeAccessFromRow_(rows[i]);
     result.push({
       sheetRow:    i + 1,
       tgId:        String(rows[i][COL.TG_ID]),
       username:    String(rows[i][COL.USERNAME]    || ''),
-      canAdd:      Number(rows[i][COL.CAN_ADD])    || 0,
-      isSuperAdmin:Number(rows[i][COL.SUPER_ADMIN])|| 0,
-      isDirektor:  Number(rows[i][COL.DIREKTOR])   || 0,
-      isAdmin:     Number(rows[i][COL.ADMIN])      || 0,
-      canViewAll:  Number(rows[i][COL.VIEW_ALL])   || 0,
-      canEdit:     Number(rows[i][COL.EDIT])       || 0,
-      canDelete:   Number(rows[i][COL.DELETE])     || 0,
-      canExport:   Number(rows[i][COL.EXPORT])     || 0,
-      canViewDash: Number(rows[i][COL.VIEW_DASH])  || 0
+      role:        access.roleKey,
+      roleLabel:   access.roleLabel,
+      canAdd:      access.canAdd ? 1 : 0,
+      isSuperAdmin:access.isSuperAdmin ? 1 : 0,
+      isDirektor:  access.isDirektor ? 1 : 0,
+      isAdmin:     access.isAdmin ? 1 : 0,
+      canViewAll:  access.permissions.canViewAll ? 1 : 0,
+      canEdit:     access.permissions.canEdit ? 1 : 0,
+      canDelete:   access.permissions.canDelete ? 1 : 0,
+      canExport:   access.permissions.canExport ? 1 : 0,
+      canViewDash: access.permissions.canViewDash ? 1 : 0,
+      overrideCanAdd:      access.overrides.canAdd,
+      overrideCanViewAll:  access.overrides.canViewAll,
+      overrideCanEdit:     access.overrides.canEdit,
+      overrideCanDelete:   access.overrides.canDelete,
+      overrideCanExport:   access.overrides.canExport,
+      overrideCanViewDash: access.overrides.canViewDash
     });
   }
   return { success: true, data: result };
@@ -606,18 +861,27 @@ function addHodim(data) {
         return { success: false, error: "Bu ID allaqachon ro'yxatda!" };
       }
     }
+    var cfg = resolveRoleAndOverridesFromPayload_(data, null);
+    var eff = cfg.effective;
     empSheet.appendRow([
       data.tgId        || '',
       data.username    || 'Yangi Xodim',
-      data.canAdd      || 0,
-      data.isSuperAdmin|| 0,
-      data.isDirektor  || 0,
-      data.isAdmin     || 0,
-      data.canViewAll  || 0,
-      data.canEdit     || 0,
-      data.canDelete   || 0,
-      data.canExport   || 0,
-      data.canViewDash || 0
+      eff.canAdd ? 1 : 0,
+      eff.isSuperAdmin ? 1 : 0,
+      eff.isDirektor ? 1 : 0,
+      (eff.isAdmin && !eff.isSuperAdmin) ? 1 : 0,
+      eff.permissions.canViewAll ? 1 : 0,
+      eff.permissions.canEdit ? 1 : 0,
+      eff.permissions.canDelete ? 1 : 0,
+      eff.permissions.canExport ? 1 : 0,
+      eff.permissions.canViewDash ? 1 : 0,
+      cfg.role,
+      overrideToCellValue_(cfg.overrides.canAdd),
+      overrideToCellValue_(cfg.overrides.canViewAll),
+      overrideToCellValue_(cfg.overrides.canEdit),
+      overrideToCellValue_(cfg.overrides.canDelete),
+      overrideToCellValue_(cfg.overrides.canExport),
+      overrideToCellValue_(cfg.overrides.canViewDash)
     ]);
     resetEmployeeCache_();
     return { success: true };
@@ -631,16 +895,25 @@ function updateHodim(data) {
     for (var i = 1; i < rows.length; i++) {
       if (String(rows[i][0]) === String(data.tgId)) {
         var r = i + 1;
+        var cfg = resolveRoleAndOverridesFromPayload_(data, rows[i]);
+        var eff = cfg.effective;
         empSheet.getRange(r, COL.USERNAME     + 1).setValue(data.username    || '');
-        empSheet.getRange(r, COL.CAN_ADD      + 1).setValue(data.canAdd      || 0);
-        empSheet.getRange(r, COL.SUPER_ADMIN  + 1).setValue(data.isSuperAdmin|| 0);
-        empSheet.getRange(r, COL.DIREKTOR     + 1).setValue(data.isDirektor  || 0);
-        empSheet.getRange(r, COL.ADMIN        + 1).setValue(data.isAdmin     || 0);
-        empSheet.getRange(r, COL.VIEW_ALL     + 1).setValue(data.canViewAll  || 0);
-        empSheet.getRange(r, COL.EDIT         + 1).setValue(data.canEdit     || 0);
-        empSheet.getRange(r, COL.DELETE       + 1).setValue(data.canDelete   || 0);
-        empSheet.getRange(r, COL.EXPORT       + 1).setValue(data.canExport   || 0);
-        empSheet.getRange(r, COL.VIEW_DASH    + 1).setValue(data.canViewDash || 0);
+        empSheet.getRange(r, COL.CAN_ADD      + 1).setValue(eff.canAdd ? 1 : 0);
+        empSheet.getRange(r, COL.SUPER_ADMIN  + 1).setValue(eff.isSuperAdmin ? 1 : 0);
+        empSheet.getRange(r, COL.DIREKTOR     + 1).setValue(eff.isDirektor ? 1 : 0);
+        empSheet.getRange(r, COL.ADMIN        + 1).setValue((eff.isAdmin && !eff.isSuperAdmin) ? 1 : 0);
+        empSheet.getRange(r, COL.VIEW_ALL     + 1).setValue(eff.permissions.canViewAll ? 1 : 0);
+        empSheet.getRange(r, COL.EDIT         + 1).setValue(eff.permissions.canEdit ? 1 : 0);
+        empSheet.getRange(r, COL.DELETE       + 1).setValue(eff.permissions.canDelete ? 1 : 0);
+        empSheet.getRange(r, COL.EXPORT       + 1).setValue(eff.permissions.canExport ? 1 : 0);
+        empSheet.getRange(r, COL.VIEW_DASH    + 1).setValue(eff.permissions.canViewDash ? 1 : 0);
+        empSheet.getRange(r, COL.ROLE         + 1).setValue(cfg.role);
+        empSheet.getRange(r, COL.OVR_CAN_ADD  + 1).setValue(overrideToCellValue_(cfg.overrides.canAdd));
+        empSheet.getRange(r, COL.OVR_VIEW_ALL + 1).setValue(overrideToCellValue_(cfg.overrides.canViewAll));
+        empSheet.getRange(r, COL.OVR_EDIT     + 1).setValue(overrideToCellValue_(cfg.overrides.canEdit));
+        empSheet.getRange(r, COL.OVR_DELETE   + 1).setValue(overrideToCellValue_(cfg.overrides.canDelete));
+        empSheet.getRange(r, COL.OVR_EXPORT   + 1).setValue(overrideToCellValue_(cfg.overrides.canExport));
+        empSheet.getRange(r, COL.OVR_VIEW_DASH+ 1).setValue(overrideToCellValue_(cfg.overrides.canViewDash));
         resetEmployeeCache_();
         return { success: true };
       }

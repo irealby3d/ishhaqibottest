@@ -1,5 +1,46 @@
+// ============================================================
+// roles.js — Hodimlar boshqaruvi (SuperAdmin)
+// ============================================================
+
+const ROLE_OPTIONS = [
+    { key: 'EMPLOYEE', label: '👤 Hodim' },
+    { key: 'ADMIN', label: '🛡 Admin' },
+    { key: 'DIRECTOR', label: '🎯 Direktor' },
+    { key: 'SUPER_ADMIN', label: '👑 SuperAdmin' }
+];
+
+const ROLE_PERM_FIELDS = ['canAdd', 'canViewAll', 'canViewDash', 'canExport', 'canEdit', 'canDelete'];
+
+function normalizeRoleKey(role) {
+    const raw = String(role || '').trim().toUpperCase();
+    if (raw === 'SUPER_ADMIN' || raw === 'SUPERADMIN') return 'SUPER_ADMIN';
+    if (raw === 'DIRECTOR' || raw === 'DIREKTOR') return 'DIRECTOR';
+    if (raw === 'ADMIN') return 'ADMIN';
+    return 'EMPLOYEE';
+}
+
+function roleBadgeHtml(roleKey) {
+    const role = normalizeRoleKey(roleKey);
+    if (role === 'SUPER_ADMIN') return '<span class="role-badge boss">👑 SuperAdmin</span>';
+    if (role === 'DIRECTOR') return '<span class="role-badge direktor">🎯 Direktor</span>';
+    if (role === 'ADMIN') return '<span class="role-badge admin">🛡 Admin</span>';
+    return '<span class="role-badge" style="background:#F1F5F9;color:#64748B;">👤 Hodim</span>';
+}
+
+function roleOptionsHtml(selectedRole) {
+    const role = normalizeRoleKey(selectedRole);
+    return ROLE_OPTIONS.map(function (opt) {
+        const selected = opt.key === role ? 'selected' : '';
+        return `<option value="${opt.key}" ${selected}>${opt.label}</option>`;
+    }).join('');
+}
+
+function boolToChecked(v) {
+    return Number(v) === 1 ? 'checked' : '';
+}
+
 function toggleHodimPerms(tgId) {
-    const btn  = document.getElementById('hbtn_'  + tgId);
+    const btn  = document.getElementById('hbtn_' + tgId);
     const body = document.getElementById('hbody_' + tgId);
     if (!btn || !body) return;
     const isOpen = body.classList.toggle('open');
@@ -7,9 +48,93 @@ function toggleHodimPerms(tgId) {
     if (tg && tg.HapticFeedback) tg.HapticFeedback.impactOccurred('light');
 }
 
-// ============================================================
-// roles.js — Hodimlar boshqaruvi (SuperAdmin)
-// ============================================================
+function permToggle(tgId, field, val, label) {
+    const id = `hp_${tgId}_${field}`;
+    const checked = Number(val) === 1;
+    return `<label class="perm-label ${checked ? 'checked' : ''}" onclick="togglePermLabel(this,'${id}')">
+        <input type="checkbox" id="${id}" ${boolToChecked(val)} onclick="event.stopPropagation();syncPermLabel(this)">
+        <span>${label}</span>
+    </label>`;
+}
+
+function togglePermLabel(lbl, cbId) {
+    const cb = document.getElementById(cbId);
+    if (!cb || cb.disabled) return;
+    cb.checked = !cb.checked;
+    syncPermLabel(cb);
+}
+
+function syncPermLabel(cb) {
+    const lbl = cb.closest('.perm-label');
+    if (lbl) lbl.classList.toggle('checked', cb.checked);
+}
+
+function setPermChecked(tgId, field, checked) {
+    const el = document.getElementById(`hp_${tgId}_${field}`);
+    if (!el) return;
+    el.checked = !!checked;
+    syncPermLabel(el);
+}
+
+function setPermDisabled(tgId, field, disabled) {
+    const el = document.getElementById(`hp_${tgId}_${field}`);
+    if (!el) return;
+    el.disabled = !!disabled;
+    const lbl = el.closest('.perm-label');
+    if (lbl) {
+        lbl.style.opacity = disabled ? '0.6' : '';
+        lbl.style.pointerEvents = disabled ? 'none' : '';
+    }
+}
+
+function getRolePreset(roleKey) {
+    const role = normalizeRoleKey(roleKey);
+    if (role === 'SUPER_ADMIN') {
+        return { canAdd:1, canViewAll:1, canViewDash:1, canExport:1, canEdit:1, canDelete:1 };
+    }
+    if (role === 'DIRECTOR') {
+        return { canAdd:1, canViewAll:1, canViewDash:1, canExport:1, canEdit:0, canDelete:0 };
+    }
+    if (role === 'ADMIN') {
+        return { canAdd:1, canViewAll:0, canViewDash:0, canExport:0, canEdit:0, canDelete:0 };
+    }
+    return { canAdd:1, canViewAll:0, canViewDash:0, canExport:0, canEdit:0, canDelete:0 };
+}
+
+function getRoleValue(tgId) {
+    const el = document.getElementById(`hrole_${tgId}`);
+    return normalizeRoleKey(el ? el.value : 'EMPLOYEE');
+}
+
+function applyRoleConstraintsToCard(tgId, usePreset) {
+    const role = getRoleValue(tgId);
+    if (usePreset) {
+        const preset = getRolePreset(role);
+        ROLE_PERM_FIELDS.forEach(function (field) {
+            setPermChecked(tgId, field, Number(preset[field]) === 1);
+        });
+    }
+
+    ROLE_PERM_FIELDS.forEach(function (field) {
+        setPermDisabled(tgId, field, false);
+    });
+
+    if (role === 'SUPER_ADMIN') {
+        ROLE_PERM_FIELDS.forEach(function (field) {
+            setPermChecked(tgId, field, true);
+            setPermDisabled(tgId, field, true);
+        });
+    } else if (role === 'DIRECTOR') {
+        setPermChecked(tgId, 'canEdit', false);
+        setPermChecked(tgId, 'canDelete', false);
+        setPermDisabled(tgId, 'canEdit', true);
+        setPermDisabled(tgId, 'canDelete', true);
+    }
+}
+
+function onHodimRoleChanged(tgId) {
+    applyRoleConstraintsToCard(tgId, true);
+}
 
 async function loadHodimlar() {
     const list = document.getElementById('hodimlarList');
@@ -29,19 +154,15 @@ async function loadHodimlar() {
         }
 
         let html = '';
-        data.data.forEach(h => {
+        data.data.forEach(function (h) {
             const safeTgId = String(h.tgId || '').replace(/[^\d]/g, '');
             const safeUsername = escapeHtml(h.username || '—');
             const safeUsernameValue = escapeHtml(h.username || '');
-            const roleBadge = h.isSuperAdmin ? '<span class="role-badge boss">👑 SuperAdmin</span>'
-                            : h.isDirektor   ? '<span class="role-badge direktor">🎯 Direktor</span>'
-                            : h.isAdmin      ? '<span class="role-badge admin">🛡 Admin</span>'
-                            : '<span class="role-badge" style="background:#F1F5F9;color:#64748B;">👤 Hodim</span>';
+            const role = normalizeRoleKey(h.role);
+            const roleBadge = roleBadgeHtml(role);
 
             html += `
             <div class="role-item" style="flex-direction:column;align-items:stretch;">
-
-                <!-- Sarlavha: ism + ID + o'chirish -->
                 <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
                     <div style="flex:1;min-width:0;">
                         <div class="role-item-name">${safeUsername}</div>
@@ -53,7 +174,6 @@ async function loadHodimlar() {
                     </div>
                 </div>
 
-                <!-- Username o'zgartirish -->
                 <div style="margin-bottom:10px;">
                     <label style="font-size:11px;font-weight:700;color:var(--text-muted);
                                   text-transform:uppercase;letter-spacing:0.5px;
@@ -69,23 +189,29 @@ async function loadHodimlar() {
                                   font-family:var(--font);background:#FAFBFD;">
                 </div>
 
-                <!-- Ruxsatlar — collapsible -->
-                <button class="perm-toggle-btn" id="hbtn_${safeTgId}"
-                        onclick="toggleHodimPerms('${safeTgId}')">
-                    <span>🔐 Ruxsatlarni sozlash</span>
+                <div style="margin-bottom:8px;">
+                    <label style="font-size:11px;font-weight:700;color:var(--text-muted);
+                                  text-transform:uppercase;letter-spacing:0.5px;
+                                  display:block;margin-bottom:5px;">
+                        🧩 Rol
+                    </label>
+                    <select id="hrole_${safeTgId}" onchange="onHodimRoleChanged('${safeTgId}')">
+                        ${roleOptionsHtml(role)}
+                    </select>
+                </div>
+
+                <button class="perm-toggle-btn" id="hbtn_${safeTgId}" onclick="toggleHodimPerms('${safeTgId}')">
+                    <span>🔐 Individual ruxsatlar</span>
                     <span class="perm-arrow">▼</span>
                 </button>
                 <div class="perm-body" id="hbody_${safeTgId}">
                     <div class="hodim-perms-grid">
-                        ${permToggle(safeTgId,'canAdd',      h.canAdd,      '➕ Amal qo\'shish')}
-                        ${permToggle(safeTgId,'isSuperAdmin',h.isSuperAdmin,'👑 SuperAdmin')}
-                        ${permToggle(safeTgId,'isDirektor',  h.isDirektor,  '🎯 Direktor')}
-                        ${permToggle(safeTgId,'isAdmin',     h.isAdmin,     '🛡 Admin')}
-                        ${permToggle(safeTgId,'canViewAll',  h.canViewAll,  '👁 Barchasini ko\'rish')}
-                        ${permToggle(safeTgId,'canEdit',     h.canEdit,     '✏️ Tahrirlash')}
-                        ${permToggle(safeTgId,'canDelete',   h.canDelete,   '🗑 O\'chirish')}
-                        ${permToggle(safeTgId,'canExport',   h.canExport,   '📥 Excel')}
-                        ${permToggle(safeTgId,'canViewDash', h.canViewDash, '📈 Dashboard')}
+                        ${permToggle(safeTgId, 'canAdd',      h.canAdd,      '➕ Amal qo\'shish')}
+                        ${permToggle(safeTgId, 'canViewAll',  h.canViewAll,  '👁 Barchasini ko\'rish')}
+                        ${permToggle(safeTgId, 'canViewDash', h.canViewDash, '📈 Dashboard')}
+                        ${permToggle(safeTgId, 'canExport',   h.canExport,   '📥 Excel')}
+                        ${permToggle(safeTgId, 'canEdit',     h.canEdit,     '✏️ Tahrirlash')}
+                        ${permToggle(safeTgId, 'canDelete',   h.canDelete,   '🗑 O\'chirish')}
                     </div>
                     <button class="perm-save-btn" onclick="saveHodim('${safeTgId}')">💾 Saqlash</button>
                 </div>
@@ -93,70 +219,84 @@ async function loadHodimlar() {
         });
         list.innerHTML = html;
 
+        data.data.forEach(function (h) {
+            const safeTgId = String(h.tgId || '').replace(/[^\d]/g, '');
+            applyRoleConstraintsToCard(safeTgId, false);
+        });
     } catch {
         list.innerHTML = `<div class="empty-state"><p style="color:var(--red);">❌ Yuklanmadi</p></div>`;
     }
 }
 
-function permToggle(tgId, field, val, label) {
-    const checked = Number(val) === 1;
-    const id = `hp_${tgId}_${field}`;
-    return `<label class="perm-label ${checked?'checked':''}" onclick="togglePermLabel(this,'${id}')">
-        <input type="checkbox" id="${id}" ${checked?'checked':''} onclick="event.stopPropagation();syncPermLabel(this)">
-        <span>${label}</span>
-    </label>`;
-}
-
-function togglePermLabel(lbl, cbId) {
-    const cb = document.getElementById(cbId);
-    if (cb) { cb.checked = !cb.checked; syncPermLabel(cb); }
-}
-function syncPermLabel(cb) {
-    const lbl = cb.closest('.perm-label');
-    if (lbl) lbl.classList.toggle('checked', cb.checked);
-}
-
 async function saveHodim(tgId) {
-    const fields = ['canAdd','isSuperAdmin','isDirektor','isAdmin','canViewAll','canEdit','canDelete','canExport','canViewDash'];
-    const payload = { action:'update_hodim', telegramId, tgId };
-    fields.forEach(f => {
-        const el = document.getElementById(`hp_${tgId}_${f}`);
-        payload[f] = el ? (el.checked ? 1 : 0) : 0;
+    const payload = {
+        action: 'update_hodim',
+        telegramId,
+        tgId,
+        role: getRoleValue(tgId)
+    };
+
+    ROLE_PERM_FIELDS.forEach(function (field) {
+        const el = document.getElementById(`hp_${tgId}_${field}`);
+        payload[field] = el && el.checked ? 1 : 0;
     });
-    // Username ni ham yuboramiz
+
     const usernameEl = document.getElementById(`uname_${tgId}`);
     if (usernameEl) payload.username = usernameEl.value;
 
     try {
         const data = await apiRequest(payload);
         showToastMsg(data.success ? '✅ Saqlandi!' : '❌ ' + data.error, !data.success);
-    } catch { showToastMsg('❌ Server xatosi', true); }
+        if (data.success) loadHodimlar();
+    } catch {
+        showToastMsg('❌ Server xatosi', true);
+    }
 }
 
 async function addHodim() {
-    const tgIdEl    = document.getElementById('newHodimId');
-    const usernameEl= document.getElementById('newHodimName');
-    const st        = document.getElementById('hodimStatus');
+    const tgIdEl = document.getElementById('newHodimId');
+    const usernameEl = document.getElementById('newHodimName');
+    const st = document.getElementById('hodimStatus');
 
-    const newTgId   = tgIdEl.value.trim();
-    const username  = usernameEl.value.trim() || 'Yangi Xodim';
+    const newTgId = tgIdEl.value.trim();
+    const username = usernameEl.value.trim() || 'Yangi Xodim';
 
-    if (!newTgId) { st.style.color='var(--red)'; st.innerText='❗ Telegram ID kiritilishi shart!'; return; }
-    st.style.color='var(--text-muted)'; st.innerText='⏳ Qo\'shilmoqda...';
+    if (!newTgId) {
+        st.style.color = 'var(--red)';
+        st.innerText = '❗ Telegram ID kiritilishi shart!';
+        return;
+    }
+    st.style.color = 'var(--text-muted)';
+    st.innerText = '⏳ Qo\'shilmoqda...';
 
     try {
         const data = await apiRequest({
-            action:'add_hodim', telegramId,
-            tgId: newTgId, username,
-            canAdd:1, isSuperAdmin:0, isDirektor:0, isAdmin:0,
-            canViewAll:0, canEdit:0, canDelete:0, canExport:0, canViewDash:0
+            action: 'add_hodim',
+            telegramId,
+            tgId: newTgId,
+            username,
+            role: 'EMPLOYEE',
+            canAdd: 1,
+            canViewAll: 0,
+            canViewDash: 0,
+            canExport: 0,
+            canEdit: 0,
+            canDelete: 0
         });
         if (data.success) {
-            st.style.color='var(--green-dark)'; st.innerText='✅ Qo\'shildi!';
-            tgIdEl.value=''; usernameEl.value='';
+            st.style.color = 'var(--green-dark)';
+            st.innerText = '✅ Qo\'shildi!';
+            tgIdEl.value = '';
+            usernameEl.value = '';
             loadHodimlar();
-        } else { st.style.color='var(--red)'; st.innerText='❌ '+(data.error||'Xato'); }
-    } catch { st.style.color='var(--red)'; st.innerText='❌ Server xatosi'; }
+        } else {
+            st.style.color = 'var(--red)';
+            st.innerText = '❌ ' + (data.error || 'Xato');
+        }
+    } catch {
+        st.style.color = 'var(--red)';
+        st.innerText = '❌ Server xatosi';
+    }
 }
 
 async function deleteHodim(tgId) {
@@ -164,6 +304,8 @@ async function deleteHodim(tgId) {
     try {
         const data = await apiRequest({ action:'delete_hodim', tgId });
         if (data.success) loadHodimlar();
-        else showToastMsg('❌ '+(data.error||"Xato"), true);
-    } catch { showToastMsg('❌ Server xatosi', true); }
+        else showToastMsg('❌ ' + (data.error || "Xato"), true);
+    } catch {
+        showToastMsg('❌ Server xatosi', true);
+    }
 }
