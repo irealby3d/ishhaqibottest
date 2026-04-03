@@ -6,11 +6,7 @@ window.onload = async () => {
     document.getElementById('greeting').innerText = `Salom, ${firstName}!`;
 
     try {
-        const res  = await fetch(API_URL, {
-            method: 'POST',
-            body:   JSON.stringify({ action: 'init', telegramId })
-        });
-        const data = await res.json();
+        const data = await apiRequest({ action: 'init' });
 
         if (data.success) {
             myFullRecords     = data.data || [];

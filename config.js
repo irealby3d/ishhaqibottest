@@ -10,6 +10,8 @@ tg.setHeaderColor && tg.setHeaderColor('#0F172A');
 const user         = tg.initDataUnsafe?.user;
 const employeeName = user ? `${user.first_name} ${user.last_name || ''}`.trim() : "Test User";
 const telegramId   = user ? String(user.id) : "0";
+const tgInitData   = typeof tg.initData === 'string' ? tg.initData : '';
+const APP_VERSION  = document.querySelector('meta[name="app-version"]')?.content || 'dev';
 
 // Global state
 let globalAdminData   = [];
@@ -117,4 +119,45 @@ function getTodayDdMmYyyy(now = new Date()) {
     display: `${day}/${month}/${year}`,
     iso: `${year}-${month}-${day}`
   };
+}
+
+async function apiRequest(payload, opts) {
+  const options = opts || {};
+  const timeoutMs = Number(options.timeoutMs) || 15000;
+
+  const body = Object.assign({}, payload || {});
+  if (!body.telegramId) body.telegramId = telegramId;
+  if (!body.initData && tgInitData) body.initData = tgInitData;
+
+  const canAbort = typeof AbortController !== 'undefined';
+  const controller = canAbort ? new AbortController() : null;
+  let timeoutId = null;
+
+  if (controller) {
+    timeoutId = setTimeout(function () {
+      controller.abort();
+    }, timeoutMs);
+  }
+
+  try {
+    const res = await fetch(API_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+      signal: controller ? controller.signal : undefined
+    });
+
+    if (!res.ok) {
+      throw new Error('HTTP ' + res.status);
+    }
+
+    return await res.json();
+  } catch (err) {
+    if (err && err.name === 'AbortError') {
+      throw new Error("So'rov vaqti tugadi");
+    }
+    throw err;
+  } finally {
+    if (timeoutId) clearTimeout(timeoutId);
+  }
 }

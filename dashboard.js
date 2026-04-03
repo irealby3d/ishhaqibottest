@@ -277,8 +277,7 @@ function loadGlobalDataThen(callback) {
     if (globalAdminData.length) { callback(); return; }
     const el = document.getElementById('dashboardContent');
     el.innerHTML = `<div class="dash-empty" style="padding:50px 20px;"><div style="font-size:40px">⏳</div><p style="margin-top:12px;">Yuklanmoqda...</p></div>`;
-    fetch(API_URL, { method: 'POST', body: JSON.stringify({ action: 'admin_get_all', telegramId }) })
-        .then(r => r.json())
+    apiRequest({ action: 'admin_get_all' })
         .then(data => {
             if (data.success) {
                 globalAdminData = data.data || [];

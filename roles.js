@@ -16,8 +16,7 @@ async function loadHodimlar() {
     list.innerHTML = `<div class="skeleton skeleton-item"></div><div class="skeleton skeleton-item"></div>`;
 
     try {
-        const res  = await fetch(API_URL, { method:'POST', body:JSON.stringify({ action:'get_hodimlar', telegramId }) });
-        const data = await res.json();
+        const data = await apiRequest({ action:'get_hodimlar' });
 
         if (!data.success) {
             list.innerHTML = `<div class="empty-state"><p style="color:var(--red);">${escapeHtml(data.error || 'Xato')}</p></div>`;
@@ -129,8 +128,7 @@ async function saveHodim(tgId) {
     if (usernameEl) payload.username = usernameEl.value;
 
     try {
-        const res  = await fetch(API_URL, { method:'POST', body:JSON.stringify(payload) });
-        const data = await res.json();
+        const data = await apiRequest(payload);
         showToastMsg(data.success ? '✅ Saqlandi!' : '❌ ' + data.error, !data.success);
     } catch { showToastMsg('❌ Server xatosi', true); }
 }
@@ -147,13 +145,12 @@ async function addHodim() {
     st.style.color='var(--text-muted)'; st.innerText='⏳ Qo\'shilmoqda...';
 
     try {
-        const res  = await fetch(API_URL, { method:'POST', body:JSON.stringify({
+        const data = await apiRequest({
             action:'add_hodim', telegramId,
             tgId: newTgId, username,
             canAdd:1, isSuperAdmin:0, isDirektor:0, isAdmin:0,
             canViewAll:0, canEdit:0, canDelete:0, canExport:0, canViewDash:0
-        })});
-        const data = await res.json();
+        });
         if (data.success) {
             st.style.color='var(--green-dark)'; st.innerText='✅ Qo\'shildi!';
             tgIdEl.value=''; usernameEl.value='';
@@ -165,8 +162,7 @@ async function addHodim() {
 async function deleteHodim(tgId) {
     if (!confirm("Bu hodimni ro'yxatdan o'chirishga ishonchingiz komilmi?")) return;
     try {
-        const res  = await fetch(API_URL, { method:'POST', body:JSON.stringify({ action:'delete_hodim', telegramId, tgId }) });
-        const data = await res.json();
+        const data = await apiRequest({ action:'delete_hodim', tgId });
         if (data.success) loadHodimlar();
         else showToastMsg('❌ '+(data.error||"Xato"), true);
     } catch { showToastMsg('❌ Server xatosi', true); }

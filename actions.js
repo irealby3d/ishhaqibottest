@@ -76,11 +76,16 @@ async function saveEdit() {
         <div class="skeleton skeleton-item"></div>
         <div class="skeleton skeleton-item"></div>`;
 
-    await fetch(API_URL, {
-        method: 'POST',
-        body: JSON.stringify({ action: "admin_edit", telegramId, rowId, amountUZS, amountUSD, rate, comment })
-    });
-    loadAdminData();
+    try {
+        const data = await apiRequest({ action: "admin_edit", rowId, amountUZS, amountUSD, rate, comment });
+        if (!data.success) {
+            showToastMsg('❌ ' + (data.error || 'Saqlashda xato'), true);
+        }
+    } catch {
+        showToastMsg('❌ Server xatosi', true);
+    } finally {
+        loadAdminData();
+    }
 }
 
 async function deleteRecord(rowId) {
@@ -89,9 +94,14 @@ async function deleteRecord(rowId) {
         <div class="skeleton skeleton-item"></div>
         <div class="skeleton skeleton-item"></div>`;
 
-    await fetch(API_URL, {
-        method: 'POST',
-        body: JSON.stringify({ action: "admin_delete", telegramId, rowId })
-    });
-    loadAdminData();
+    try {
+        const data = await apiRequest({ action: "admin_delete", rowId });
+        if (!data.success) {
+            showToastMsg('❌ ' + (data.error || "O'chirishda xato"), true);
+        }
+    } catch {
+        showToastMsg('❌ Server xatosi', true);
+    } finally {
+        loadAdminData();
+    }
 }

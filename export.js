@@ -139,11 +139,7 @@ async function exportToBot(dataList, fileNameBase) {
         // ============================================================
         // BOTGA YUBORISH
         // ============================================================
-        const res    = await fetch(API_URL, {
-            method: "POST",
-            body:   JSON.stringify({ action: "export_to_bot", telegramId, base64, fileName })
-        });
-        const result = await res.json();
+        const result = await apiRequest({ action: "export_to_bot", base64, fileName }, { timeoutMs: 30000 });
         tg.MainButton.hide();
 
         if (result.success) {

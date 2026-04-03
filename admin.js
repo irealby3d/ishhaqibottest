@@ -6,8 +6,7 @@ async function loadAdminData() {
         <div class="skeleton skeleton-item"></div>
         <div class="skeleton skeleton-item"></div>`;
     try {
-        const res  = await fetch(API_URL, { method:'POST', body:JSON.stringify({ action:'admin_get_all', telegramId }) });
-        const data = await res.json();
+        const data = await apiRequest({ action:'admin_get_all' });
         if (data.success) {
             globalAdminData = data.data || [];
             filteredData    = [...globalAdminData];
@@ -74,6 +73,7 @@ function applyFilters() {
             const me = emp === 'all' || item.name === emp;
             let mm = true, my = true;
             const dateMeta = getDateMonthYear(item.date);
+            if (!dateMeta && (month !== 'all' || year !== 'all')) return false;
             if (dateMeta) {
                 if (month !== 'all') mm = dateMeta.month === month;
                 if (year  !== 'all') my = dateMeta.year === year;

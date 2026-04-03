@@ -27,6 +27,7 @@ function applyMyFilters() {
     myFilteredRecords = myFullRecords.filter(r => {
         let m=true, y=true;
         const dateMeta = getDateMonthYear(r.date);
+        if (!dateMeta && (month !== 'all' || year !== 'all')) return false;
         if (dateMeta) {
             if (month !== 'all') m = dateMeta.month === month;
             if (year  !== 'all') y = dateMeta.year === year;
@@ -105,6 +106,14 @@ function showMyDetailModal(idx){
     if(tg&&tg.HapticFeedback)tg.HapticFeedback.impactOccurred('light');
 }
 
+function resetAddForm() {
+    document.getElementById('amount').value = '';
+    document.getElementById('currency').value = 'UZS';
+    document.getElementById('rate').value = '';
+    document.getElementById('comment').value = '';
+    toggleRate();
+}
+
 // ---- Yangi amal ----
 document.getElementById('financeForm').addEventListener('submit', async(e)=>{
     e.preventDefault();
@@ -127,13 +136,24 @@ document.getElementById('financeForm').addEventListener('submit', async(e)=>{
     btn.disabled=true; btn.innerText='⏳ Yuborilmoqda...';
 
     try{
-        const res=await fetch(API_URL,{method:'POST',body:JSON.stringify({
+        const data = await apiRequest({
             action:'add',employeeName,telegramId,amountUZS,amountUSD,rate,comment,date,dateISO:today.iso
-        })});
-        const data=await res.json();
+        });
         if(data.success){
             status.style.color='var(--green-dark)'; status.innerText='✅ Muvaffaqiyatli saqlandi!';
-            setTimeout(()=>window.location.reload(),1200);
+            myFullRecords.push({
+                rowId: Date.now(),
+                name: myUsername || employeeName || '—',
+                amountUZS: Number(amountUZS) || 0,
+                amountUSD: Number(amountUSD) || 0,
+                rate: Number(rate) || 0,
+                comment: comment,
+                date: date
+            });
+            applyMyFilters();
+            resetAddForm();
+            btn.disabled=false; btn.innerText='💾 Saqlash';
+            if (tg && tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
         } else {
             status.style.color='var(--red)'; status.innerText='❌ '+(data.error||'Xato');
             btn.disabled=false; btn.innerText='💾 Saqlash';
