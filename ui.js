@@ -46,14 +46,8 @@ window.onload = async () => {
             // Admin panel endi sozlamalar uchun (faqat SuperAdmin)
             if (myRole === 'SuperAdmin') document.getElementById('nav-admin').classList.remove('hidden');
 
-            // Hodimlar boshqaruvi — faqat SuperAdmin
-            if (myRole === 'SuperAdmin') {
-                const selfCheckBtn = document.getElementById('selfCheckBtn');
-                if (selfCheckBtn) selfCheckBtn.style.display = '';
-            } else {
-                const selfCheckBtn = document.getElementById('selfCheckBtn');
-                if (selfCheckBtn) selfCheckBtn.style.display = 'none';
-            }
+            // Tizim tekshiruv tugmasi — faqat SuperAdmin
+            setSelfCheckButtonsVisibility(myRole === 'SuperAdmin');
 
             initMyFilters();
         } else {
@@ -74,13 +68,30 @@ function switchTab(tabId, navId) {
         const el = document.getElementById(navId);
         if (el) el.classList.add('active');
     }
-    if (tabId === 'adminTab') loadHodimlar();
+    if (tabId === 'adminTab') initAdminTab();
     if (tabId === 'dashboardTab') initDashboardTab();
 
     // + tugmasiga bosilganda ruxsatni tekshir
     if (tabId === 'addTab') {
         checkAddPermission();
     }
+}
+
+function setSelfCheckButtonsVisibility(isSuperAdmin) {
+    ['selfCheckBtn', 'selfCheckBtnAdmin'].forEach(function (id) {
+        const btn = document.getElementById(id);
+        if (btn) btn.style.display = isSuperAdmin ? '' : 'none';
+    });
+}
+
+function initAdminTab() {
+    const btnHodimlar = document.getElementById('adminNavHodimlar');
+    if (btnHodimlar) {
+        switchAdminSub('adminHodimlarArea', btnHodimlar);
+        return;
+    }
+    // fallback
+    loadHodimlar();
 }
 
 function initDashboardTab() {
@@ -159,15 +170,24 @@ function showToastMsg(msg, isErr=false) {
 }
 
 function switchAdminSub(areaId, btn) {
-    ['adminRolesArea','adminHodimlarArea'].forEach(id => {
+    ['adminHodimlarArea', 'adminNotifyArea', 'adminServiceArea'].forEach(id => {
         const el = document.getElementById(id);
         if (el) el.classList.add('hidden');
     });
-    document.querySelectorAll('.sub-btn').forEach(b => b.classList.remove('active'));
-    document.getElementById(areaId).classList.remove('hidden');
-    btn.classList.add('active');
+    document.querySelectorAll('.admin-sub-btn').forEach(b => b.classList.remove('active'));
+
+    const target = document.getElementById(areaId);
+    if (target) target.classList.remove('hidden');
+    if (btn) btn.classList.add('active');
 
     if (areaId === 'adminHodimlarArea') loadHodimlar();
+    if (areaId === 'adminNotifyArea') {
+        loadNotifyTargets();
+        setNotifyStatus('', false, 'admin');
+    }
+    if (areaId === 'adminServiceArea') {
+        setNotifyStatus('', false, 'admin_service');
+    }
 }
 
 function toggleRate() {

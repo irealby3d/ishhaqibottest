@@ -6,12 +6,12 @@
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="mobile-web-app-capable" content="yes">
-    <title>Aristokrat Ish Haqi (v1.0.11)</title>
-    <meta name="app-version" content="v1.0.11">
+    <title>Aristokrat Ish Haqi (v1.0.12)</title>
+    <meta name="app-version" content="v1.0.12">
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
-    <link rel="stylesheet" href="style.css?v=1.0.11">
+    <link rel="stylesheet" href="style.css?v=1.0.12">
 </head>
 <body>
 <div class="container">
@@ -21,7 +21,7 @@
         <div class="page-header">
             <div>
                 <h2 id="greeting">Salom!</h2>
-                <div style="font-size:11px;color:#64748b;font-weight:700;letter-spacing:.3px;">v1.0.11</div>
+                <div style="font-size:11px;color:#64748b;font-weight:700;letter-spacing:.3px;">v1.0.12</div>
             </div>
             <div class="header-avatar">👤</div>
         </div>
@@ -104,7 +104,17 @@
 
     <!-- TAB 3: ADMIN -->
     <div id="adminTab" class="tab-content">
-        <!-- Sozlamalar (SuperAdmin) -->
+        <div class="page-header">
+            <h2>👑 Admin Panel</h2>
+            <div class="header-avatar">⚙️</div>
+        </div>
+
+        <div class="sub-tabs" id="adminNav">
+            <button class="sub-btn admin-sub-btn active" id="adminNavHodimlar" onclick="switchAdminSub('adminHodimlarArea',this)">👥 Hodimlar</button>
+            <button class="sub-btn admin-sub-btn" id="adminNavNotify" onclick="switchAdminSub('adminNotifyArea',this)">📣 Xabarlar</button>
+            <button class="sub-btn admin-sub-btn" id="adminNavService" onclick="switchAdminSub('adminServiceArea',this)">🧪 Tizim</button>
+        </div>
+
         <div id="adminHodimlarArea">
             <div class="card">
                 <div class="card-title">➕ Yangi Hodim Qo'shish</div>
@@ -134,6 +144,32 @@
 
             <div class="section-title">Hodimlar ro'yxati</div>
             <div id="hodimlarList"></div>
+        </div>
+
+        <div id="adminNotifyArea" class="hidden">
+            <div class="card">
+                <div class="card-title">📣 Xabar Yuborish</div>
+                <div class="filter-row" style="margin-bottom:8px;">
+                    <select id="adminNotifyTargetTgId"><option value="">User tanlang</option></select>
+                    <button class="btn-main bg-navy" style="width:auto;padding:10px 14px;margin-top:0;" onclick="sendUserReminderFromPanel('admin')">✉️ Tanlangan userga</button>
+                </div>
+                <div class="filter-row" style="margin-bottom:8px;">
+                    <input type="number" id="adminInactiveDays" value="14" min="1" max="365" placeholder="Kun" inputmode="numeric">
+                    <button class="btn-main bg-navy" style="width:auto;padding:10px 14px;margin-top:0;" onclick="sendInactiveRemindersFromPanel('admin')">🤖 Faol bo'lmaganlarga</button>
+                </div>
+                <div id="adminNotifyStatus" class="status-msg"></div>
+            </div>
+        </div>
+
+        <div id="adminServiceArea" class="hidden">
+            <div class="card">
+                <div class="card-title">🧪 Tizim Tekshiruvi</div>
+                <p style="margin:0 0 10px;font-size:12px;color:var(--text-muted);">
+                    Prod ulanish va muhim sozlamalarni tekshiradi.
+                </p>
+                <button class="btn-secondary" id="selfCheckBtnAdmin" style="margin-top:0;" onclick="runSystemSelfCheck('admin')">🧪 Self-check (Prod sozlamalar)</button>
+                <div id="adminServiceStatus" class="status-msg"></div>
+            </div>
         </div>
     </div>
 
@@ -267,14 +303,14 @@
     </div>
 </div>
 
-<script src="config.js?v=1.0.11"></script>
-<script src="ui.js?v=1.0.11"></script>
-<script src="employee.js?v=1.0.11"></script>
-<script src="admin.js?v=1.0.11"></script>
-<script src="export.js?v=1.0.11"></script>
-<script src="actions.js?v=1.0.11"></script>
-<script src="dashboard.js?v=1.0.11"></script>
-<script src="detail_modal.js?v=1.0.11"></script>
-<script src="roles.js?v=1.0.11"></script>
+<script src="config.js?v=1.0.12"></script>
+<script src="ui.js?v=1.0.12"></script>
+<script src="employee.js?v=1.0.12"></script>
+<script src="admin.js?v=1.0.12"></script>
+<script src="export.js?v=1.0.12"></script>
+<script src="actions.js?v=1.0.12"></script>
+<script src="dashboard.js?v=1.0.12"></script>
+<script src="detail_modal.js?v=1.0.12"></script>
+<script src="roles.js?v=1.0.12"></script>
 </body>
 </html>

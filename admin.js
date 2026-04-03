@@ -123,89 +123,118 @@ async function fetchAdminPage(page, opts) {
     }
 }
 
-function setNotifyStatus(msg, isErr) {
-    const el = document.getElementById('notifyStatus');
+function getNotifyStatusElement(scope) {
+    if (scope === 'admin') return document.getElementById('adminNotifyStatus');
+    if (scope === 'admin_service') return document.getElementById('adminServiceStatus');
+    return document.getElementById('notifyStatus');
+}
+
+function setNotifyStatus(msg, isErr, scope) {
+    const el = getNotifyStatusElement(scope || 'dashboard');
     if (!el) return;
     el.style.color = isErr ? 'var(--red)' : 'var(--green-dark)';
     el.innerText = msg || '';
 }
 
+function getNotifyTargetSelects() {
+    const ids = ['notifyTargetTgId', 'adminNotifyTargetTgId'];
+    return ids.map(function (id) { return document.getElementById(id); }).filter(Boolean);
+}
+
 async function loadNotifyTargets() {
-    const select = document.getElementById('notifyTargetTgId');
-    if (!select) return;
+    const selects = getNotifyTargetSelects();
+    if (!selects.length) return;
 
     try {
         const data = await apiRequest({ action: 'list_notify_users' });
         if (!data.success) {
-            setNotifyStatus('❌ ' + (data.error || 'Userlar yuklanmadi'), true);
+            const msg = '❌ ' + (data.error || 'Userlar yuklanmadi');
+            setNotifyStatus(msg, true, 'dashboard');
+            setNotifyStatus(msg, true, 'admin');
             return;
         }
 
-        const oldValue = select.value;
-        select.innerHTML = '<option value="">User tanlang</option>';
-        (data.data || []).forEach(function (u) {
-            const option = document.createElement('option');
-            option.value = u.tgId;
-            option.textContent = (u.username || 'User') + ' [' + u.tgId + ']';
-            select.appendChild(option);
+        const oldValues = {};
+        selects.forEach(function (select) {
+            oldValues[select.id] = select.value;
+            select.innerHTML = '<option value="">User tanlang</option>';
         });
 
-        const hasOld = Array.from(select.options).some(function (opt) { return opt.value === oldValue; });
-        if (hasOld) select.value = oldValue;
+        (data.data || []).forEach(function (u) {
+            selects.forEach(function (select) {
+                const option = document.createElement('option');
+                option.value = u.tgId;
+                option.textContent = (u.username || 'User') + ' [' + u.tgId + ']';
+                select.appendChild(option);
+            });
+        });
+
+        selects.forEach(function (select) {
+            const oldValue = oldValues[select.id] || '';
+            const hasOld = Array.from(select.options).some(function (opt) { return opt.value === oldValue; });
+            if (hasOld) select.value = oldValue;
+        });
+
         notifyUsersLoaded = true;
     } catch {
-        setNotifyStatus('❌ User ro\'yxati yuklanmadi', true);
+        setNotifyStatus('❌ User ro\'yxati yuklanmadi', true, 'dashboard');
+        setNotifyStatus('❌ User ro\'yxati yuklanmadi', true, 'admin');
     }
 }
 
-async function sendUserReminderFromPanel() {
-    const select = document.getElementById('notifyTargetTgId');
+async function sendUserReminderFromPanel(scope) {
+    const mode = scope === 'admin' ? 'admin' : 'dashboard';
+    const selectId = mode === 'admin' ? 'adminNotifyTargetTgId' : 'notifyTargetTgId';
+    const select = document.getElementById(selectId);
     const tgId = select ? String(select.value || '').trim() : '';
     if (!tgId) {
-        setNotifyStatus('❗ Avval user tanlang', true);
+        setNotifyStatus('❗ Avval user tanlang', true, mode);
         return;
     }
 
-    setNotifyStatus('⏳ Xabar yuborilmoqda...', false);
+    setNotifyStatus('⏳ Xabar yuborilmoqda...', false, mode);
     try {
         const data = await apiRequest({ action: 'send_user_reminder', targetTgId: tgId });
         if (data.success) {
-            setNotifyStatus('✅ Userga xabar yuborildi', false);
+            setNotifyStatus('✅ Userga xabar yuborildi', false, mode);
         } else {
-            setNotifyStatus('❌ ' + (data.error || 'Yuborilmadi'), true);
+            setNotifyStatus('❌ ' + (data.error || 'Yuborilmadi'), true, mode);
         }
     } catch {
-        setNotifyStatus('❌ Server xatosi', true);
+        setNotifyStatus('❌ Server xatosi', true, mode);
     }
 }
 
-async function sendInactiveRemindersFromPanel() {
-    const daysEl = document.getElementById('inactiveDays');
+async function sendInactiveRemindersFromPanel(scope) {
+    const mode = scope === 'admin' ? 'admin' : 'dashboard';
+    const daysId = mode === 'admin' ? 'adminInactiveDays' : 'inactiveDays';
+    const daysEl = document.getElementById(daysId);
     const days = daysEl ? Number(daysEl.value || 0) : 0;
     if (!Number.isFinite(days) || days < 1) {
-        setNotifyStatus('❗ Kun sonini to\'g\'ri kiriting', true);
+        setNotifyStatus('❗ Kun sonini to\'g\'ri kiriting', true, mode);
         return;
     }
 
-    setNotifyStatus('⏳ Faol bo\'lmagan userlarga yuborilmoqda...', false);
+    setNotifyStatus('⏳ Faol bo\'lmagan userlarga yuborilmoqda...', false, mode);
     try {
         const data = await apiRequest({ action: 'send_inactive_reminders', days }, { timeoutMs: 60000 });
         if (data.success) {
-            setNotifyStatus(`✅ Yuborildi: ${data.sent}/${data.total} ta`, false);
+            setNotifyStatus(`✅ Yuborildi: ${data.sent}/${data.total} ta`, false, mode);
         } else {
-            setNotifyStatus('❌ ' + (data.error || 'Yuborilmadi'), true);
+            setNotifyStatus('❌ ' + (data.error || 'Yuborilmadi'), true, mode);
         }
     } catch {
-        setNotifyStatus('❌ Server xatosi', true);
+        setNotifyStatus('❌ Server xatosi', true, mode);
     }
 }
 
-async function runSystemSelfCheck() {
-    setNotifyStatus('⏳ Self-check ishlayapti...', false);
+async function runSystemSelfCheck(scope) {
+    const statusScope = scope === 'admin' ? 'admin_service' : 'dashboard';
+    setNotifyStatus('⏳ Self-check ishlayapti...', false, statusScope);
     try {
         const data = await apiRequest({ action: 'self_check' });
         if (!data.success) {
-            setNotifyStatus('❌ ' + (data.error || 'Self-check xato'), true);
+            setNotifyStatus('❌ ' + (data.error || 'Self-check xato'), true, statusScope);
             return;
         }
         const checks = Array.isArray(data.checks) ? data.checks : [];
@@ -213,13 +242,13 @@ async function runSystemSelfCheck() {
         const summary = bad.length
             ? ('⚠️ ' + bad.length + ' ta ogohlantirish bor')
             : '✅ Barcha tekshiruvlar yaxshi';
-        setNotifyStatus(summary, bad.length > 0);
+        setNotifyStatus(summary, bad.length > 0, statusScope);
         if (bad.length > 0) {
             const msg = bad.map(function (c) { return '• ' + c.key + ': ' + c.note; }).join('\n');
             alert('Self-check:\n' + msg);
         }
     } catch {
-        setNotifyStatus('❌ Server xatosi', true);
+        setNotifyStatus('❌ Server xatosi', true, statusScope);
     }
 }
 
