@@ -285,6 +285,16 @@ function normalizeFilterText_(value) {
   return String(value || '').toLowerCase().trim();
 }
 
+function getConfigSuperAdminId_() {
+  return String((CONFIG && CONFIG.SUPER_ADMIN_ID) || '').trim();
+}
+
+function isConfigSuperAdminId_(tgId) {
+  var cfg = getConfigSuperAdminId_();
+  if (!cfg) return false;
+  return String(tgId || '').trim() === cfg;
+}
+
 function matchesAdminFilters_(name, comment, dateMeta, filters) {
   var f = filters || {};
   var employee = String(f.employee || 'all');
@@ -323,6 +333,7 @@ function parseOverrideBit_(value) {
 }
 
 function deriveLegacyRoleFromRow_(row) {
+  if (isConfigSuperAdminId_(row[COL.TG_ID])) return 'SUPER_ADMIN';
   if (toBool01_(row[COL.SUPER_ADMIN])) return 'SUPER_ADMIN';
   if (toBool01_(row[COL.DIREKTOR])) return 'DIRECTOR';
   if (toBool01_(row[COL.ADMIN])) return 'ADMIN';
@@ -529,6 +540,20 @@ function checkUserRoles(tgId) {
   };
 
   if (!emp) {
+    if (isConfigSuperAdminId_(tgId)) {
+      auth.username = String((CONFIG && CONFIG.SUPER_ADMIN_NAME) || 'SuperAdmin');
+      auth.role = 'SuperAdmin';
+      auth.roleKey = 'SUPER_ADMIN';
+      auth.isSuperAdmin = true;
+      auth.isAdmin = true;
+      auth.isBoss = true;
+      auth.canAdd = true;
+      auth.permissions = {
+        canViewAll:true, canEdit:true,
+        canDelete:true, canExport:true, canViewDash:true
+      };
+      return auth;
+    }
     // Ro'yxatda yo'q — oddiy foydalanuvchi, amal qo'sha olmaydi
     auth.canAdd = false;
     return auth;
@@ -894,6 +919,7 @@ function getHodimlar() {
     result.push({
       sheetRow:    i + 1,
       tgId:        String(rows[i][COL.TG_ID]),
+      isConfigSuperAdmin: isConfigSuperAdminId_(rows[i][COL.TG_ID]) ? 1 : 0,
       username:    String(rows[i][COL.USERNAME]    || ''),
       role:        access.roleKey,
       roleLabel:   access.roleLabel,
@@ -919,6 +945,9 @@ function getHodimlar() {
 
 function addHodim(data) {
   return withWriteLock_(function () {
+    if (isConfigSuperAdminId_(data.tgId)) {
+      return { success:false, error:"Config SUPER_ADMIN_ID ilovadan qo'shilmaydi/o'zgarmaydi. Faqat Google Sheetsdan boshqaring." };
+    }
     var empSheet = getSheets().empSheet;
     var rows     = getEmployeeRows_();
     for (var i = 1; i < rows.length; i++) {
@@ -955,6 +984,9 @@ function addHodim(data) {
 
 function updateHodim(data) {
   return withWriteLock_(function () {
+    if (isConfigSuperAdminId_(data.tgId)) {
+      return { success:false, error:"Config SUPER_ADMIN_ID ruxsatlarini ilovadan o'zgartirib bo'lmaydi." };
+    }
     var empSheet = getSheets().empSheet;
     var rows     = getEmployeeRows_();
     for (var i = 1; i < rows.length; i++) {
@@ -989,6 +1021,9 @@ function updateHodim(data) {
 
 function deleteHodim(tgId) {
   return withWriteLock_(function () {
+    if (isConfigSuperAdminId_(tgId)) {
+      return { success:false, error:"Config SUPER_ADMIN_ID ni o'chirib bo'lmaydi." };
+    }
     var empSheet = getSheets().empSheet;
     var rows     = getEmployeeRows_();
     for (var i = 1; i < rows.length; i++) {

@@ -136,6 +136,30 @@ function onHodimRoleChanged(tgId) {
     applyRoleConstraintsToCard(tgId, true);
 }
 
+function lockConfigSuperAdminCard(tgId) {
+    const usernameEl = document.getElementById(`uname_${tgId}`);
+    const roleEl = document.getElementById(`hrole_${tgId}`);
+    const saveBtn = document.getElementById(`hsave_${tgId}`);
+    const delBtn = document.getElementById(`hdel_${tgId}`);
+
+    if (usernameEl) usernameEl.disabled = true;
+    if (roleEl) roleEl.disabled = true;
+    if (saveBtn) {
+        saveBtn.disabled = true;
+        saveBtn.style.opacity = '0.65';
+        saveBtn.style.cursor = 'not-allowed';
+    }
+    if (delBtn) {
+        delBtn.disabled = true;
+        delBtn.style.opacity = '0.65';
+        delBtn.style.cursor = 'not-allowed';
+    }
+
+    ROLE_PERM_FIELDS.forEach(function (field) {
+        setPermDisabled(tgId, field, true);
+    });
+}
+
 async function loadHodimlar() {
     const list = document.getElementById('hodimlarList');
     list.innerHTML = `<div class="skeleton skeleton-item"></div><div class="skeleton skeleton-item"></div>`;
@@ -160,6 +184,10 @@ async function loadHodimlar() {
             const safeUsernameValue = escapeHtml(h.username || '');
             const role = normalizeRoleKey(h.role);
             const roleBadge = roleBadgeHtml(role);
+            const isConfigLocked = Number(h.isConfigSuperAdmin) === 1;
+            const lockBadge = isConfigLocked
+                ? '<span class="role-badge" style="background:#FEF3C7;color:#92400E;">🔒 Config Lock</span>'
+                : '';
 
             html += `
             <div class="role-item" style="flex-direction:column;align-items:stretch;">
@@ -170,7 +198,8 @@ async function loadHodimlar() {
                     </div>
                     <div style="display:flex;gap:8px;align-items:center;flex-shrink:0;">
                         ${roleBadge}
-                        <button class="del-icon-btn" onclick="deleteHodim('${safeTgId}')">🗑</button>
+                        ${lockBadge}
+                        <button class="del-icon-btn" id="hdel_${safeTgId}" onclick="deleteHodim('${safeTgId}')">🗑</button>
                     </div>
                 </div>
 
@@ -200,6 +229,8 @@ async function loadHodimlar() {
                     </select>
                 </div>
 
+                ${isConfigLocked ? `<div style="font-size:11px;color:#92400E;background:#FFFBEB;border:1px solid #FDE68A;border-radius:10px;padding:8px 10px;margin-bottom:8px;">🔒 Bu akkaunt CONFIG dagi SUPER_ADMIN_ID. Rol/ruxsatni faqat Google Sheetsdan o'zgartirasiz.</div>` : ''}
+
                 <button class="perm-toggle-btn" id="hbtn_${safeTgId}" onclick="toggleHodimPerms('${safeTgId}')">
                     <span>🔐 Individual ruxsatlar</span>
                     <span class="perm-arrow">▼</span>
@@ -213,7 +244,7 @@ async function loadHodimlar() {
                         ${permToggle(safeTgId, 'canEdit',     h.canEdit,     '✏️ Tahrirlash')}
                         ${permToggle(safeTgId, 'canDelete',   h.canDelete,   '🗑 O\'chirish')}
                     </div>
-                    <button class="perm-save-btn" onclick="saveHodim('${safeTgId}')">💾 Saqlash</button>
+                    <button class="perm-save-btn" id="hsave_${safeTgId}" onclick="saveHodim('${safeTgId}')">💾 Saqlash</button>
                 </div>
             </div>`;
         });
@@ -222,6 +253,9 @@ async function loadHodimlar() {
         data.data.forEach(function (h) {
             const safeTgId = String(h.tgId || '').replace(/[^\d]/g, '');
             applyRoleConstraintsToCard(safeTgId, false);
+            if (Number(h.isConfigSuperAdmin) === 1) {
+                lockConfigSuperAdminCard(safeTgId);
+            }
         });
     } catch {
         list.innerHTML = `<div class="empty-state"><p style="color:var(--red);">❌ Yuklanmadi</p></div>`;
@@ -229,6 +263,12 @@ async function loadHodimlar() {
 }
 
 async function saveHodim(tgId) {
+    const roleEl = document.getElementById(`hrole_${tgId}`);
+    if (roleEl && roleEl.disabled) {
+        showToastMsg('❌ Bu akkauntni ilovadan o\'zgartirib bo\'lmaydi', true);
+        return;
+    }
+
     const payload = {
         action: 'update_hodim',
         telegramId,
