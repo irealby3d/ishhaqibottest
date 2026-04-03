@@ -10,28 +10,12 @@ const PALETTE   = ['#10B981','#3B82F6','#F59E0B','#EF4444','#8B5CF6','#EC4899','
 // Google Sheets Date → JSON → "2026-03-16T00:00:00.000Z" → to'g'ri parse
 // ============================================================
 function parseDate(s) {
-    if (!s) return null;
-    const str = String(s).trim();
-    if (!str || str === 'undefined' || str === 'null') return null;
-
-    let y, m;
-
-    // ISO format: "2026-03-16T..." yoki "2026-03-16"
-    if (/^\d{4}-\d{2}-\d{2}/.test(str)) {
-        y = str.substring(0, 4);
-        m = str.substring(5, 7);
-    }
-    // DD/MM/YYYY format (ilovadan kelgan format)
-    else if (str.includes('/')) {
-        const p = str.split('/');
-        if (p.length < 3) return null;
-        m = String(p[1]).padStart(2, '0');
-        y = String(p[2]);
-    }
-    else return null;
-
-    const mIdx = parseInt(m) - 1;
-    if (mIdx < 0 || mIdx > 11 || !y || y.length !== 4) return null;
+    const dateMeta = parseDateParts(s);
+    if (!dateMeta) return null;
+    const y = dateMeta.year;
+    const m = dateMeta.month;
+    const mIdx = parseInt(m, 10) - 1;
+    if (mIdx < 0 || mIdx > 11) return null;
 
     return {
         m,

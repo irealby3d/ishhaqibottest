@@ -41,7 +41,8 @@ function populateFilters() {
     let emps = new Set(), years = new Set();
     globalAdminData.forEach(r => {
         if (r.name) emps.add(r.name);
-        if (r.date) { const p = r.date.split('/'); if (p[2]) years.add(p[2]); }
+        const dateMeta = getDateMonthYear(r.date);
+        if (dateMeta) years.add(dateMeta.year);
     });
     empSel.innerHTML  = '<option value="all">Barcha xodimlar</option>';
     yearSel.innerHTML = '<option value="all">Yillar</option>';
@@ -72,10 +73,10 @@ function applyFilters() {
                        (item.comment && item.comment.toLowerCase().includes(query));
             const me = emp === 'all' || item.name === emp;
             let mm = true, my = true;
-            if (item.date) {
-                const p = item.date.split('/');
-                if (month !== 'all') mm = p[1] === month;
-                if (year  !== 'all') my = p[2] === year;
+            const dateMeta = getDateMonthYear(item.date);
+            if (dateMeta) {
+                if (month !== 'all') mm = dateMeta.month === month;
+                if (year  !== 'all') my = dateMeta.year === year;
             }
             return mt && me && mm && my;
         });

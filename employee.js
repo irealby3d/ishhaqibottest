@@ -7,7 +7,10 @@ const MY_ITEMS_PER_PAGE = 8;
 function initMyFilters() {
     const yearSel = document.getElementById('myFilterYear');
     let years = new Set();
-    myFullRecords.forEach(r => { if (r.date) years.add(r.date.split('/')[2]); });
+    myFullRecords.forEach(r => {
+        const dateMeta = getDateMonthYear(r.date);
+        if (dateMeta) years.add(dateMeta.year);
+    });
     yearSel.innerHTML = '<option value="all">Yillar</option>';
     Array.from(years).sort((a,b)=>b-a).forEach(y => {
         const option = document.createElement('option');
@@ -23,10 +26,10 @@ function applyMyFilters() {
     const year  = document.getElementById('myFilterYear').value;
     myFilteredRecords = myFullRecords.filter(r => {
         let m=true, y=true;
-        if (r.date) {
-            const p=r.date.split('/');
-            if (month!=='all') m=p[1]===month;
-            if (year !=='all') y=p[2]===year;
+        const dateMeta = getDateMonthYear(r.date);
+        if (dateMeta) {
+            if (month !== 'all') m = dateMeta.month === month;
+            if (year  !== 'all') y = dateMeta.year === year;
         }
         return m&&y;
     });
@@ -119,12 +122,13 @@ document.getElementById('financeForm').addEventListener('submit', async(e)=>{
     const amountUSD=currency==='USD'?amount:0;
     if(currency==='USD'&&rate<5000)return alert("Iltimos, to'g'ri kursni kiriting!");
 
-    const date=new Intl.DateTimeFormat('uz-UZ',{day:'2-digit',month:'2-digit',year:'numeric'}).format(new Date());
+    const today = getTodayDdMmYyyy();
+    const date = today.display;
     btn.disabled=true; btn.innerText='⏳ Yuborilmoqda...';
 
     try{
         const res=await fetch(API_URL,{method:'POST',body:JSON.stringify({
-            action:'add',employeeName,telegramId,amountUZS,amountUSD,rate,comment,date
+            action:'add',employeeName,telegramId,amountUZS,amountUSD,rate,comment,date,dateISO:today.iso
         })});
         const data=await res.json();
         if(data.success){
