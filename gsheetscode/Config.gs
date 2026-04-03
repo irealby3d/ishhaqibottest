@@ -8,7 +8,8 @@ var CONFIG = {
   SUPER_ADMIN_NAME: "SuperAdmin",            // Ko'rsatiladigan ism
   WEB_APP_URL:      "https://YOUR.github.io/ishhaqibottest/",
   REQUIRE_TELEGRAM_AUTH: false,  // Prod uchun true qiling
-  AUTH_MAX_AGE_SEC: 86400
+  AUTH_MAX_AGE_SEC: 86400,
+  RATE_LIMIT_ENABLED: true
 };
 
 function sendJSON(data) {

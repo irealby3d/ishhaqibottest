@@ -15,6 +15,7 @@ const APP_VERSION  = document.querySelector('meta[name="app-version"]')?.content
 
 // Global state
 let globalAdminData   = [];
+let globalAdminDataIsPartial = false;
 let filteredData      = [];
 let myFullRecords     = [];
 let myFilteredRecords = [];
@@ -166,4 +167,12 @@ async function apiRequest(payload, opts) {
   } finally {
     if (timeoutId) clearTimeout(timeoutId);
   }
+}
+
+if (typeof module !== 'undefined' && module.exports) {
+  module.exports = {
+    parseDateParts,
+    getDateMonthYear,
+    getTodayDdMmYyyy
+  };
 }

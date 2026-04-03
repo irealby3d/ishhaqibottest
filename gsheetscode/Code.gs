@@ -9,8 +9,14 @@ function doGet(e) {
 }
 
 function doPost(e) {
+  var rawBody = '';
+  var body = {};
+  var action = '';
+  var tgId = '';
+
   try {
-    var body = JSON.parse(e.postData.contents);
+    rawBody = e && e.postData && e.postData.contents ? String(e.postData.contents) : '{}';
+    body = JSON.parse(rawBody || '{}');
 
     // Telegram webhook — ignore (webhook o'chirilgan)
     if (body.update_id) {
@@ -21,11 +27,18 @@ function doPost(e) {
 
     // Web App so'rovi
     var data   = body;
-    var action = data.action;
-    var tgId   = String(data.telegramId);
+    action = String(data.action || '');
+    tgId   = String(data.telegramId || '');
+    if (!action) {
+      return sendJSON({ success:false, error:"Action yuborilmadi" });
+    }
     var authValidation = validateTelegramAuth(data, tgId);
     if (!authValidation.success) {
       return sendJSON({ success:false, error: authValidation.error });
+    }
+    var rateLimit = checkRateLimit_(tgId, action);
+    if (!rateLimit.success) {
+      return sendJSON(rateLimit);
     }
     var auth   = checkUserRoles(tgId);
     var result;
@@ -44,7 +57,7 @@ function doPost(e) {
         var canView = auth.isSuperAdmin || auth.isDirector ||
                      (auth.isAdmin && auth.permissions.canViewAll);
         if (!canView) return sendJSON({ success:false, error:"Ko'rish ruxsati yo'q!" });
-        result = adminGetAll();
+        result = adminGetAll(data);
         break;
 
       case "admin_edit":
@@ -97,6 +110,12 @@ function doPost(e) {
     return sendJSON(result);
 
   } catch(err) {
+    addErrorLog_({
+      action: action || (body && body.action),
+      tgId: tgId || (body && body.telegramId),
+      rawBody: rawBody,
+      error: err
+    });
     return sendJSON({ success: false, error: err.toString() });
   }
 }
@@ -106,6 +125,73 @@ function deleteWebhook() {
   var url = 'https://api.telegram.org/bot' + CONFIG.BOT_TOKEN +
             '/deleteWebhook?drop_pending_updates=true';
   Logger.log(UrlFetchApp.fetch(url).getContentText());
+}
+
+function checkRateLimit_(tgId, action) {
+  var ttl = getRateLimitSeconds_(action);
+  if (ttl <= 0) return { success:true };
+
+  var cache;
+  try {
+    cache = CacheService.getScriptCache();
+  } catch (e) {
+    return { success:true };
+  }
+  if (!cache) return { success:true };
+
+  var key = 'rl:' + String(tgId || '0') + ':' + String(action || '');
+  try {
+    if (cache.get(key)) {
+      return { success:false, error:"Juda tez so'rov yuborildi. 2 soniya kuting." };
+    }
+    cache.put(key, '1', ttl);
+  } catch (e2) {
+    return { success:true };
+  }
+  return { success:true };
+}
+
+function getRateLimitSeconds_(action) {
+  if (CONFIG && CONFIG.RATE_LIMIT_ENABLED === false) return 0;
+  var a = String(action || '');
+  if (a === 'add' || a === 'admin_edit' || a === 'admin_delete' ||
+      a === 'add_hodim' || a === 'update_hodim' || a === 'delete_hodim') return 2;
+  if (a === 'export_to_bot') return 5;
+  return 0;
+}
+
+function getErrorSheet_() {
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var sh = ss.getSheetByName('ErrorLog');
+  if (!sh) {
+    sh = ss.insertSheet('ErrorLog');
+    sh.appendRow(['Timestamp', 'Action', 'TelegramId', 'Error', 'Stack', 'RawBody']);
+    sh.getRange(1, 1, 1, 6).setFontWeight('bold');
+  }
+  return sh;
+}
+
+function truncateForLog_(value, maxLen) {
+  var str = String(value || '');
+  if (str.length <= maxLen) return str;
+  return str.slice(0, maxLen) + '...';
+}
+
+function addErrorLog_(ctx) {
+  try {
+    var sh = getErrorSheet_();
+    var errObj = ctx && ctx.error ? ctx.error : null;
+    var errText = errObj ? String(errObj) : '';
+    var stack = errObj && errObj.stack ? String(errObj.stack) : '';
+    sh.appendRow([
+      new Date(),
+      String((ctx && ctx.action) || ''),
+      String((ctx && ctx.tgId) || ''),
+      truncateForLog_(errText, 1000),
+      truncateForLog_(stack, 4000),
+      truncateForLog_((ctx && ctx.rawBody) || '', 2000)
+    ]);
+  } catch (ignore) {}
 }
 
 function validateTelegramAuth(data, tgId) {
