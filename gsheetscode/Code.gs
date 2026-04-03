@@ -140,7 +140,8 @@ function verifyTelegramInitData_(initData, botToken, expectedTgId) {
   var dataCheckString = parts.join('\n');
 
   var secretKey = Utilities.computeHmacSha256Signature(botToken, 'WebAppData');
-  var calcHashBytes = Utilities.computeHmacSha256Signature(dataCheckString, secretKey);
+  var dataCheckBytes = Utilities.newBlob(dataCheckString).getBytes();
+  var calcHashBytes = Utilities.computeHmacSha256Signature(dataCheckBytes, secretKey);
   var calcHash = toHex_(calcHashBytes);
 
   if (calcHash !== String(theirHash).toLowerCase()) {
