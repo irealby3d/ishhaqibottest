@@ -1,6 +1,6 @@
 // ================= ADMIN FUNKSIYALARI =================
 
-const ADMIN_SERVER_PAGE_SIZE = 20;
+const ADMIN_SERVER_PAGE_SIZE = 10;
 let adminTotalCount = 0;
 let adminTotalPages = 1;
 let adminTotalUZS = 0;
