@@ -57,11 +57,22 @@ function closeModal() {
     document.getElementById('editModal').classList.add('hidden');
 }
 
+function askActionReason(titleText) {
+    const reason = prompt(`${titleText} sababini kiriting:`);
+    if (!reason || !String(reason).trim()) {
+        showToastMsg('❌ Sabab kiritilishi shart', true);
+        return '';
+    }
+    return String(reason).trim();
+}
+
 async function saveEdit() {
     const rowId     = document.getElementById('editRowId').value;
     const amountUSD = parseFloat(document.getElementById('editAmountUSD').value) || 0;
     const rate      = parseFloat(document.getElementById('editRate').value)      || 0;
     const comment   = document.getElementById('editComment').value;
+    const reason    = askActionReason("Tahrirlash");
+    if (!reason) return;
 
     // FIX 4: UZS ni qayta hisoblash
     let amountUZS;
@@ -77,7 +88,7 @@ async function saveEdit() {
         <div class="skeleton skeleton-item"></div>`;
 
     try {
-        const data = await apiRequest({ action: "admin_edit", rowId, amountUZS, amountUSD, rate, comment });
+        const data = await apiRequest({ action: "admin_edit", rowId, amountUZS, amountUSD, rate, comment, reason });
         if (!data.success) {
             showToastMsg('❌ ' + (data.error || 'Saqlashda xato'), true);
         }
@@ -90,12 +101,14 @@ async function saveEdit() {
 
 async function deleteRecord(rowId) {
     if (!confirm("Ushbu ma'lumotni o'chirishga ishonchingiz komilmi?")) return;
+    const reason = askActionReason("O'chirish");
+    if (!reason) return;
     document.getElementById('adminList').innerHTML = `
         <div class="skeleton skeleton-item"></div>
         <div class="skeleton skeleton-item"></div>`;
 
     try {
-        const data = await apiRequest({ action: "admin_delete", rowId });
+        const data = await apiRequest({ action: "admin_delete", rowId, reason });
         if (!data.success) {
             showToastMsg('❌ ' + (data.error || "O'chirishda xato"), true);
         }

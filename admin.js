@@ -7,6 +7,7 @@ let adminTotalUZS = 0;
 let adminFiltersReady = false;
 let adminReqSerial = 0;
 let adminFilterDebounceTimer;
+let notifyUsersLoaded = false;
 
 function getAdminFilterState() {
     return {
@@ -109,12 +110,116 @@ async function fetchAdminPage(page, opts) {
             populateFiltersFromServer(data.employees || [], data.years || [], state);
         }
 
+        if (!notifyUsersLoaded || options.refreshMeta) {
+            loadNotifyTargets();
+        }
+
         calculateTotal();
         renderAdminPage();
     } catch (e) {
         console.error(e);
         if (requestId !== adminReqSerial) return;
         showAdminError('Internet ulanishini tekshiring.');
+    }
+}
+
+function setNotifyStatus(msg, isErr) {
+    const el = document.getElementById('notifyStatus');
+    if (!el) return;
+    el.style.color = isErr ? 'var(--red)' : 'var(--green-dark)';
+    el.innerText = msg || '';
+}
+
+async function loadNotifyTargets() {
+    const select = document.getElementById('notifyTargetTgId');
+    if (!select) return;
+
+    try {
+        const data = await apiRequest({ action: 'list_notify_users' });
+        if (!data.success) {
+            setNotifyStatus('❌ ' + (data.error || 'Userlar yuklanmadi'), true);
+            return;
+        }
+
+        const oldValue = select.value;
+        select.innerHTML = '<option value="">User tanlang</option>';
+        (data.data || []).forEach(function (u) {
+            const option = document.createElement('option');
+            option.value = u.tgId;
+            option.textContent = (u.username || 'User') + ' [' + u.tgId + ']';
+            select.appendChild(option);
+        });
+
+        const hasOld = Array.from(select.options).some(function (opt) { return opt.value === oldValue; });
+        if (hasOld) select.value = oldValue;
+        notifyUsersLoaded = true;
+    } catch {
+        setNotifyStatus('❌ User ro\'yxati yuklanmadi', true);
+    }
+}
+
+async function sendUserReminderFromPanel() {
+    const select = document.getElementById('notifyTargetTgId');
+    const tgId = select ? String(select.value || '').trim() : '';
+    if (!tgId) {
+        setNotifyStatus('❗ Avval user tanlang', true);
+        return;
+    }
+
+    setNotifyStatus('⏳ Xabar yuborilmoqda...', false);
+    try {
+        const data = await apiRequest({ action: 'send_user_reminder', targetTgId: tgId });
+        if (data.success) {
+            setNotifyStatus('✅ Userga xabar yuborildi', false);
+        } else {
+            setNotifyStatus('❌ ' + (data.error || 'Yuborilmadi'), true);
+        }
+    } catch {
+        setNotifyStatus('❌ Server xatosi', true);
+    }
+}
+
+async function sendInactiveRemindersFromPanel() {
+    const daysEl = document.getElementById('inactiveDays');
+    const days = daysEl ? Number(daysEl.value || 0) : 0;
+    if (!Number.isFinite(days) || days < 1) {
+        setNotifyStatus('❗ Kun sonini to\'g\'ri kiriting', true);
+        return;
+    }
+
+    setNotifyStatus('⏳ Faol bo\'lmagan userlarga yuborilmoqda...', false);
+    try {
+        const data = await apiRequest({ action: 'send_inactive_reminders', days }, { timeoutMs: 60000 });
+        if (data.success) {
+            setNotifyStatus(`✅ Yuborildi: ${data.sent}/${data.total} ta`, false);
+        } else {
+            setNotifyStatus('❌ ' + (data.error || 'Yuborilmadi'), true);
+        }
+    } catch {
+        setNotifyStatus('❌ Server xatosi', true);
+    }
+}
+
+async function runSystemSelfCheck() {
+    setNotifyStatus('⏳ Self-check ishlayapti...', false);
+    try {
+        const data = await apiRequest({ action: 'self_check' });
+        if (!data.success) {
+            setNotifyStatus('❌ ' + (data.error || 'Self-check xato'), true);
+            return;
+        }
+        const checks = Array.isArray(data.checks) ? data.checks : [];
+        const bad = checks.filter(function (c) { return !c.ok; });
+        const summary = bad.length
+            ? ('⚠️ ' + bad.length + ' ta ogohlantirish bor')
+            : '✅ Barcha tekshiruvlar yaxshi';
+        setNotifyStatus(summary, bad.length > 0);
+        if (bad.length > 0) {
+            const msg = bad.map(function (c) { return '• ' + c.key + ': ' + c.note; }).join('\n');
+            alert('Self-check:\n' + msg);
+        }
+    } catch {
+        setNotifyStatus('❌ Server xatosi', true);
     }
 }
 

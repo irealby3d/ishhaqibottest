@@ -46,7 +46,12 @@ window.onload = async () => {
             if (showAdmin) document.getElementById('nav-admin').classList.remove('hidden');
 
             // Hodimlar boshqaruvi — faqat SuperAdmin
-            if (myRole === 'SuperAdmin') document.getElementById('bossNav').classList.remove('hidden');
+            if (myRole === 'SuperAdmin') {
+                document.getElementById('bossNav').classList.remove('hidden');
+            } else {
+                const selfCheckBtn = document.getElementById('selfCheckBtn');
+                if (selfCheckBtn) selfCheckBtn.style.display = 'none';
+            }
 
             initMyFilters();
         } else {

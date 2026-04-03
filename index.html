@@ -6,12 +6,12 @@
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="mobile-web-app-capable" content="yes">
-    <title>Aristokrat Ish Haqi (v1.0.8)</title>
-    <meta name="app-version" content="v1.0.8">
+    <title>Aristokrat Ish Haqi (v1.0.9)</title>
+    <meta name="app-version" content="v1.0.9">
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
-    <link rel="stylesheet" href="style.css?v=1.0.8">
+    <link rel="stylesheet" href="style.css?v=1.0.9">
 </head>
 <body>
 <div class="container">
@@ -21,7 +21,7 @@
         <div class="page-header">
             <div>
                 <h2 id="greeting">Salom!</h2>
-                <div style="font-size:11px;color:#64748b;font-weight:700;letter-spacing:.3px;">v1.0.8</div>
+                <div style="font-size:11px;color:#64748b;font-weight:700;letter-spacing:.3px;">v1.0.9</div>
             </div>
             <div class="header-avatar">👤</div>
         </div>
@@ -138,6 +138,21 @@
                     <select id="filterYear" onchange="applyFilters()"><option value="all">Yillar</option></select>
                 </div>
             </div>
+
+            <div class="card" style="margin-bottom:14px;">
+                <div class="card-title">📣 Xabar Yuborish</div>
+                <div class="filter-row" style="margin-bottom:8px;">
+                    <select id="notifyTargetTgId"><option value="">User tanlang</option></select>
+                    <button class="btn-main bg-navy" style="width:auto;padding:10px 14px;margin-top:0;" onclick="sendUserReminderFromPanel()">✉️ Yuborish</button>
+                </div>
+                <div class="filter-row" style="margin-bottom:8px;">
+                    <input type="number" id="inactiveDays" value="14" min="1" max="365" placeholder="Kun" inputmode="numeric">
+                    <button class="btn-main bg-navy" style="width:auto;padding:10px 14px;margin-top:0;" onclick="sendInactiveRemindersFromPanel()">🤖 Faol bo'lmaganlarga</button>
+                </div>
+                <button class="btn-secondary" id="selfCheckBtn" style="margin-top:0;" onclick="runSystemSelfCheck()">🧪 Self-check (Prod sozlamalar)</button>
+                <div id="notifyStatus" class="status-msg"></div>
+            </div>
+
             <div id="adminList"></div>
             <div id="pagination" class="pagination"></div>
         </div>
@@ -250,14 +265,14 @@
     </div>
 </div>
 
-<script src="config.js?v=1.0.8"></script>
-<script src="ui.js?v=1.0.8"></script>
-<script src="employee.js?v=1.0.8"></script>
-<script src="admin.js?v=1.0.8"></script>
-<script src="export.js?v=1.0.8"></script>
-<script src="actions.js?v=1.0.8"></script>
-<script src="dashboard.js?v=1.0.8"></script>
-<script src="detail_modal.js?v=1.0.8"></script>
-<script src="roles.js?v=1.0.8"></script>
+<script src="config.js?v=1.0.9"></script>
+<script src="ui.js?v=1.0.9"></script>
+<script src="employee.js?v=1.0.9"></script>
+<script src="admin.js?v=1.0.9"></script>
+<script src="export.js?v=1.0.9"></script>
+<script src="actions.js?v=1.0.9"></script>
+<script src="dashboard.js?v=1.0.9"></script>
+<script src="detail_modal.js?v=1.0.9"></script>
+<script src="roles.js?v=1.0.9"></script>
 </body>
 </html>

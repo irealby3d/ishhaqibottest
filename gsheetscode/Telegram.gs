@@ -2,6 +2,27 @@
 // TELEGRAM.GS — Telegram Bot API
 // ============================================================
 
+function tgSendMessage_(chatId, text, parseMode) {
+  var url = "https://api.telegram.org/bot" + CONFIG.BOT_TOKEN + "/sendMessage";
+  var payload = {
+    chat_id: String(chatId || ''),
+    text: String(text || '')
+  };
+  if (parseMode) payload.parse_mode = parseMode;
+
+  var options = {
+    method: "post",
+    contentType: "application/json",
+    muteHttpExceptions: true,
+    payload: JSON.stringify(payload)
+  };
+
+  var resp = UrlFetchApp.fetch(url, options);
+  var body = {};
+  try { body = JSON.parse(resp.getContentText()); } catch (e) {}
+  return body;
+}
+
 // Yangi amal qo'shilganda xabarnoma yuborish
 function sendTelegramNotification(data) {
   var uzsText = Number(data.amountUZS) > 0 ? "\n💰 " + Number(data.amountUZS).toLocaleString() + " UZS" : "";
@@ -15,18 +36,26 @@ function sendTelegramNotification(data) {
             "\n📝 " + (data.comment || "—") +
             "\n📅 " + (data.date    || "—");
 
-  var url     = "https://api.telegram.org/bot" + CONFIG.BOT_TOKEN + "/sendMessage";
-  var options = {
-    method:          "post",
-    contentType:     "application/json",
-    muteHttpExceptions: true,
-    payload: JSON.stringify({
-      chat_id:    CONFIG.CHAT_ID,
-      text:       msg,
-      parse_mode: "HTML"
-    })
-  };
-  UrlFetchApp.fetch(url, options);
+  tgSendMessage_(CONFIG.CHAT_ID, msg, "HTML");
+}
+
+function getReminderMessage_(username) {
+  var base = String((CONFIG && CONFIG.REMINDER_TEXT) || '').trim();
+  if (!base) {
+    base = "⚠️ Eslatma!\nKompaniya kelajagi uchun olgan avans va oyliklaringizni botga o'z vaqtida yozib qo'ying. Rahmat.";
+  }
+  var who = username ? ("👤 " + String(username) + "\n") : "";
+  return who + base;
+}
+
+function sendSalaryReminderToUser(tgId, username) {
+  if (!tgId) return { ok:false, description:'tgId topilmadi' };
+  return tgSendMessage_(tgId, getReminderMessage_(username), null);
+}
+
+function sendSystemAlert(message) {
+  if (!CONFIG || !CONFIG.CHAT_ID) return { ok:false, description:'CHAT_ID topilmadi' };
+  return tgSendMessage_(CONFIG.CHAT_ID, String(message || ''), null);
 }
 
 // Excel faylni foydalanuvchiga yuborish
