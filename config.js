@@ -27,6 +27,8 @@ let myUsername   = '';   // Sheetdan kelgan laqab
 let myCanAdd     = true; // + tugmasi doim ko'rinadi, ruxsat yo'q bo'lsa ogohlantirish
 let myInList     = false;// Hodimlar sheetida bormi
 let canViewCompanyActions = false;
+let canExportCompanyData = false;
+let adminContactId = '';
 
 let myPermissions = {
   canViewAll:false, canEdit:false,

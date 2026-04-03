@@ -18,11 +18,10 @@ function doPost(e) {
     rawBody = e && e.postData && e.postData.contents ? String(e.postData.contents) : '{}';
     body = JSON.parse(rawBody || '{}');
 
-    // Telegram webhook — ignore (webhook o'chirilgan)
+    // Telegram webhook update
     if (body.update_id) {
-      return ContentService
-        .createTextOutput(JSON.stringify({ ok: true }))
-        .setMimeType(ContentService.MimeType.JSON);
+      handleTelegramUpdate_(body);
+      return sendJSON({ ok: true });
     }
 
     // Web App so'rovi
@@ -46,7 +45,7 @@ function doPost(e) {
     switch (action) {
 
       case "init":
-        result = initUser(tgId, auth);
+        result = initUser(tgId, auth, data);
         break;
 
       case "add":
@@ -54,24 +53,31 @@ function doPost(e) {
         break;
 
       case "admin_get_all":
-        var canView = auth.isSuperAdmin || auth.isDirector ||
-                     (auth.isAdmin && auth.permissions.canViewAll);
+        var canView = auth.isSuperAdmin || auth.permissions.canViewAll;
         if (!canView) return sendJSON({ success:false, error:"Ko'rish ruxsati yo'q!" });
         result = adminGetAll(data);
         break;
 
       case "admin_edit":
-        var canEdit = auth.isSuperAdmin ||
-                     (auth.isAdmin && auth.permissions.canEdit);
+        var canEdit = auth.isSuperAdmin || auth.permissions.canEdit;
         if (!canEdit) return sendJSON({ success:false, error:"Tahrirlash ruxsati yo'q!" });
         result = adminEditRecord(data, tgId);
         break;
 
       case "admin_delete":
-        var canDel = auth.isSuperAdmin ||
-                    (auth.isAdmin && auth.permissions.canDelete);
+        var canDel = auth.isSuperAdmin || auth.permissions.canDelete;
         if (!canDel) return sendJSON({ success:false, error:"O'chirish ruxsati yo'q!" });
         result = adminDeleteRecord(data.rowId, tgId, data.reason);
+        break;
+
+      case "self_edit":
+        if (!auth.inList && !auth.isSuperAdmin) return sendJSON({ success:false, error:"Ro'yxatda topilmadingiz" });
+        result = selfEditRecord(data, tgId);
+        break;
+
+      case "self_delete":
+        if (!auth.inList && !auth.isSuperAdmin) return sendJSON({ success:false, error:"Ro'yxatda topilmadingiz" });
+        result = selfDeleteRecord(data.rowId, tgId, data.reason);
         break;
 
       // ---- Hodimlar boshqaruvi (SuperAdmin) ----
@@ -101,22 +107,22 @@ function doPost(e) {
         break;
 
       case "list_notify_users":
-        if (!(auth.isSuperAdmin || auth.isDirector || auth.isAdmin)) return sendJSON({ success:false, error:"Ruxsat yo'q!" });
+        if (!(auth.isSuperAdmin || auth.isAdmin)) return sendJSON({ success:false, error:"Ruxsat yo'q!" });
         result = listNotifyUsers();
         break;
 
       case "get_inactive_users":
-        if (!(auth.isSuperAdmin || auth.isDirector || auth.isAdmin)) return sendJSON({ success:false, error:"Ruxsat yo'q!" });
+        if (!(auth.isSuperAdmin || auth.isAdmin)) return sendJSON({ success:false, error:"Ruxsat yo'q!" });
         result = getInactiveUsers(data.days);
         break;
 
       case "send_user_reminder":
-        if (!(auth.isSuperAdmin || auth.isDirector || auth.isAdmin)) return sendJSON({ success:false, error:"Ruxsat yo'q!" });
+        if (!(auth.isSuperAdmin || auth.isAdmin)) return sendJSON({ success:false, error:"Ruxsat yo'q!" });
         result = sendUserReminder(data.targetTgId, tgId, data.messageText);
         break;
 
       case "send_inactive_reminders":
-        if (!(auth.isSuperAdmin || auth.isDirector || auth.isAdmin)) return sendJSON({ success:false, error:"Ruxsat yo'q!" });
+        if (!(auth.isSuperAdmin || auth.isAdmin)) return sendJSON({ success:false, error:"Ruxsat yo'q!" });
         result = sendInactiveReminders(data.days, tgId, data.messageText);
         break;
 
@@ -136,9 +142,14 @@ function doPost(e) {
         break;
 
       case "export_to_bot":
-        var canExp = auth.canAdd || auth.isSuperAdmin || auth.isDirector ||
-                    (auth.isAdmin && auth.permissions.canExport);
-        if (!canExp) return sendJSON({ success:false, error:"Excel ruxsati yo'q!" });
+        var exportScope = String(data.scope || 'self').toLowerCase();
+        var canExport = false;
+        if (exportScope === 'all') {
+          canExport = auth.isSuperAdmin || (auth.permissions.canViewAll && auth.permissions.canExport);
+        } else {
+          canExport = auth.isSuperAdmin || auth.inList;
+        }
+        if (!canExport) return sendJSON({ success:false, error:"Excel ruxsati yo'q!" });
         var res = sendExcelToUser(tgId, data.base64, data.fileName);
         result  = { success: res.ok, error: res.description };
         break;
@@ -165,6 +176,52 @@ function deleteWebhook() {
   var url = 'https://api.telegram.org/bot' + CONFIG.BOT_TOKEN +
             '/deleteWebhook?drop_pending_updates=true';
   Logger.log(UrlFetchApp.fetch(url).getContentText());
+}
+
+function handleTelegramUpdate_(update) {
+  var msg = update && update.message ? update.message : null;
+  if (!msg || !msg.from) return;
+
+  var text = String(msg.text || '').trim();
+  if (text.indexOf('/start') === 0) {
+    handleStartCommand_(msg);
+  }
+}
+
+function handleStartCommand_(message) {
+  var from = message && message.from ? message.from : {};
+  var tgId = String(from.id || '').trim();
+  if (!tgId) return;
+
+  var data = {
+    firstName: String(from.first_name || ''),
+    lastName: String(from.last_name || ''),
+    tgUsername: String(from.username || '')
+  };
+  var reg = autoRegisterPendingUserIfMissing_(tgId, data, 'start');
+
+  var text = "Assalomu alaykum!\n" +
+             "Siz tizim ro'yxatiga qo'shildingiz.\n" +
+             "Ruxsat olish uchun admin bilan bog'laning.";
+  if (reg && reg.created) {
+    text = "Assalomu alaykum!\n" +
+           "Siz yangi foydalanuvchi sifatida ro'yxatga qo'shildingiz.\n" +
+           "Ruxsat olish uchun admin bilan bog'laning.";
+  }
+
+  var buttons = [];
+  var webApp = String((CONFIG && CONFIG.WEB_APP_URL) || '').trim();
+  if (webApp && webApp.indexOf('YOUR.github.io') < 0) {
+    buttons.push([{ text: "📱 Web Appni ochish", web_app: { url: webApp } }]);
+  }
+
+  var adminId = String((CONFIG && CONFIG.SUPER_ADMIN_ID) || '').trim();
+  if (adminId && adminId !== 'YOUR_TG_ADMIN_CHAT_ID') {
+    buttons.push([{ text: "📩 Admin bilan bog'lanish", url: "tg://user?id=" + adminId }]);
+  }
+
+  var replyMarkup = buttons.length ? { inline_keyboard: buttons } : null;
+  tgSendMessage_(tgId, text, null, replyMarkup);
 }
 
 function checkRateLimit_(tgId, action) {
@@ -195,6 +252,7 @@ function getRateLimitSeconds_(action) {
   if (CONFIG && CONFIG.RATE_LIMIT_ENABLED === false) return 0;
   var a = String(action || '');
   if (a === 'add' || a === 'admin_edit' || a === 'admin_delete' ||
+      a === 'self_edit' || a === 'self_delete' ||
       a === 'add_hodim' || a === 'update_hodim' || a === 'delete_hodim' ||
       a === 'send_user_reminder' || a === 'send_inactive_reminders' ||
       a === 'set_reminder_text') return 2;

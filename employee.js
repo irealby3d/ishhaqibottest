@@ -102,7 +102,7 @@ function goToMyPage(page){
 
 function showMyDetailModal(idx){
     const r=myFilteredRecords[idx]; if(!r)return;
-    showDetailModal(r,false);
+    showDetailModal(r,'self');
     if(tg&&tg.HapticFeedback)tg.HapticFeedback.impactOccurred('light');
 }
 

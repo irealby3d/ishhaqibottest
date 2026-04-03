@@ -112,7 +112,7 @@ async function fetchAdminPage(page, opts) {
             populateFiltersFromServer(data.employees || [], data.years || [], state);
         }
 
-        if (!notifyUsersLoaded || options.refreshMeta) {
+        if ((myRole === 'SuperAdmin' || myRole === 'Admin') && (!notifyUsersLoaded || options.refreshMeta)) {
             loadNotifyTargets();
         }
 
@@ -128,7 +128,7 @@ async function fetchAdminPage(page, opts) {
 function getNotifyStatusElement(scope) {
     if (scope === 'admin') return document.getElementById('adminNotifyStatus');
     if (scope === 'admin_service') return document.getElementById('adminServiceStatus');
-    return document.getElementById('notifyStatus');
+    return document.getElementById('adminNotifyStatus');
 }
 
 function setNotifyStatus(msg, isErr, scope) {
@@ -139,7 +139,7 @@ function setNotifyStatus(msg, isErr, scope) {
 }
 
 function getNotifyTargetSelects() {
-    const ids = ['notifyTargetTgId', 'adminNotifyTargetTgId'];
+    const ids = ['adminNotifyTargetTgId'];
     return ids.map(function (id) { return document.getElementById(id); }).filter(Boolean);
 }
 
@@ -395,8 +395,7 @@ function renderAdminPage() {
         return;
     }
 
-    const canEditAny = myRole === 'SuperAdmin' ||
-                       (myRole === 'Admin' && (myPermissions.canEdit || myPermissions.canDelete));
+    const canEditAny = myRole === 'SuperAdmin' || myPermissions.canEdit || myPermissions.canDelete;
 
     let html = '';
     filteredData.forEach(function (r, idx) {
@@ -463,9 +462,7 @@ function goToPage(page) {
 function showAdminDetailModal(idx) {
     const r = filteredData[idx];
     if (!r) return;
-    const canEdit = myRole === 'SuperAdmin' ||
-                    (myRole === 'Admin' && (myPermissions.canEdit || myPermissions.canDelete));
-    showDetailModal(r, canEdit);
+    showDetailModal(r, 'admin');
     if (tg && tg.HapticFeedback) tg.HapticFeedback.impactOccurred('light');
 }
 

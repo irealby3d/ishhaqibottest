@@ -1,6 +1,6 @@
 // ================= BATAFSIL MA'LUMOT MODALI =================
 
-function showDetailModal(r, canEdit) {
+function showDetailModal(r, mode) {
     const uzs  = Number(r.amountUZS) || 0;
     const usd  = Number(r.amountUSD) || 0;
     const rowId = Number(r.rowId) || 0;
@@ -46,7 +46,7 @@ function showDetailModal(r, canEdit) {
         : '';
 
     let actionBtns = '';
-    if (canEdit) {
+    if (mode === 'admin' || mode === true) {
         const canDel = myRole === 'SuperAdmin' || myPermissions.canDelete;
         const canEd  = myRole === 'SuperAdmin' || myPermissions.canEdit;
         actionBtns = `
@@ -55,6 +55,14 @@ function showDetailModal(r, canEdit) {
                 onclick="closeDetailModal();openEdit(${rowId})">✏️ Tahrirlash</button>` : ''}
             ${canDel ? `<button class="del-btn" style="flex:1;padding:13px;border-radius:10px;font-size:14px;"
                 onclick="closeDetailModal();deleteRecord(${rowId})">🗑 O'chirish</button>` : ''}
+        </div>`;
+    } else if (mode === 'self') {
+        actionBtns = `
+        <div style="display:flex;gap:10px;margin-top:16px;padding-top:16px;border-top:1px solid var(--border);">
+            <button class="edit-btn" style="flex:1;padding:13px;border-radius:10px;font-size:14px;"
+                onclick="closeDetailModal();openSelfEdit(${rowId})">✏️ Tahrirlash</button>
+            <button class="del-btn" style="flex:1;padding:13px;border-radius:10px;font-size:14px;"
+                onclick="closeDetailModal();deleteOwnRecord(${rowId})">🗑 O'chirish</button>
         </div>`;
     }
 

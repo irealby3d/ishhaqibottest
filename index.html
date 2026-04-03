@@ -6,12 +6,12 @@
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="mobile-web-app-capable" content="yes">
-    <title>Aristokrat Ish Haqi (v1.0.13)</title>
-    <meta name="app-version" content="v1.0.13">
+    <title>Aristokrat Ish Haqi (v1.0.14)</title>
+    <meta name="app-version" content="v1.0.14">
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
-    <link rel="stylesheet" href="style.css?v=1.0.13">
+    <link rel="stylesheet" href="style.css?v=1.0.14">
 </head>
 <body>
 <div class="container">
@@ -21,7 +21,7 @@
         <div class="page-header">
             <div>
                 <h2 id="greeting">Salom!</h2>
-                <div style="font-size:11px;color:#64748b;font-weight:700;letter-spacing:.3px;">v1.0.13</div>
+                <div style="font-size:11px;color:#64748b;font-weight:700;letter-spacing:.3px;">v1.0.14</div>
             </div>
             <div class="header-avatar">👤</div>
         </div>
@@ -69,6 +69,9 @@
             <div class="perm-warn-icon">⚠️</div>
             <div class="perm-warn-title" id="permWarnTitle">Ruxsat yo'q</div>
             <div class="perm-warn-desc" id="permWarnDesc">SuperAdminga murojaat qiling.</div>
+            <button id="contactAdminBtn" class="btn-main bg-navy hidden" onclick="contactAdmin()" style="margin-top:10px;">
+                📩 Admin bilan bog'lanish
+            </button>
             <button class="btn-secondary" onclick="switchTab('reportTab','nav-report')" style="margin-top:16px;">
                 ← Hisobotga qaytish
             </button>
@@ -136,8 +139,8 @@
                     <div>🧩 Avval <b>Rol</b> tanlanadi: Hodim / Admin / Direktor / SuperAdmin</div>
                     <div>🔧 Keyin har bir userga <b>individual override</b> berish mumkin</div>
                     <div>👑 <b>SuperAdmin</b> — to'liq huquq (hammasi yoqilgan)</div>
-                    <div>🎯 <b>Direktor</b> — ko'radi + dashboard + export, lekin edit/delete yo'q</div>
-                    <div>🛡 <b>Admin</b> — quyidagi ruxsatlar bilan boshqariladi</div>
+                    <div>🎯 <b>Direktor</b> — default: ko'rish + dashboard + export</div>
+                    <div>🛡 <b>Admin</b> — default: qo'shish + barchasini ko'rish</div>
                     <div>➕ 👁 📈 📥 ✏️ 🗑 — qo'shish, ko'rish, dashboard, excel, tahrirlash, o'chirish</div>
                 </div>
             </div>
@@ -206,7 +209,7 @@
                 <div class="budget-amount" id="totalCompanyUzs">0 UZS</div>
                 <div class="budget-footer">
                     <span class="budget-count">📊 Filtrlangan: <span id="filteredCount">0</span> ta amal</span>
-                    <button class="excel-btn" onclick="exportAdminExcel()">📥 Excel</button>
+                    <button class="excel-btn" id="companyExportBtn" onclick="exportAdminExcel()">📥 Excel</button>
                 </div>
             </div>
             <div class="filter-box">
@@ -304,14 +307,14 @@
     </div>
 </div>
 
-<script src="config.js?v=1.0.13"></script>
-<script src="ui.js?v=1.0.13"></script>
-<script src="employee.js?v=1.0.13"></script>
-<script src="admin.js?v=1.0.13"></script>
-<script src="export.js?v=1.0.13"></script>
-<script src="actions.js?v=1.0.13"></script>
-<script src="dashboard.js?v=1.0.13"></script>
-<script src="detail_modal.js?v=1.0.13"></script>
-<script src="roles.js?v=1.0.13"></script>
+<script src="config.js?v=1.0.14"></script>
+<script src="ui.js?v=1.0.14"></script>
+<script src="employee.js?v=1.0.14"></script>
+<script src="admin.js?v=1.0.14"></script>
+<script src="export.js?v=1.0.14"></script>
+<script src="actions.js?v=1.0.14"></script>
+<script src="dashboard.js?v=1.0.14"></script>
+<script src="detail_modal.js?v=1.0.14"></script>
+<script src="roles.js?v=1.0.14"></script>
 </body>
 </html>

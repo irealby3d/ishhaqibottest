@@ -1,6 +1,6 @@
 // ================= EXCEL EKSPORT =================
 
-async function exportToBot(dataList, fileNameBase) {
+async function exportToBot(dataList, fileNameBase, scope) {
     if (!dataList || dataList.length === 0) {
         return alert("Eksport uchun ma'lumot yo'q!");
     }
@@ -139,7 +139,12 @@ async function exportToBot(dataList, fileNameBase) {
         // ============================================================
         // BOTGA YUBORISH
         // ============================================================
-        const result = await apiRequest({ action: "export_to_bot", base64, fileName }, { timeoutMs: 30000 });
+        const result = await apiRequest({
+            action: "export_to_bot",
+            base64,
+            fileName,
+            scope: scope || 'self'
+        }, { timeoutMs: 30000 });
         tg.MainButton.hide();
 
         if (result.success) {
@@ -156,11 +161,15 @@ async function exportToBot(dataList, fileNameBase) {
 
 // Xodim o'z hisobotini yuklab oladi
 function exportMyExcel() {
-    exportToBot(myFilteredRecords, "Hisobot_" + employeeName);
+    exportToBot(myFilteredRecords, "Hisobot_" + employeeName, "self");
 }
 
 // Admin paneldan eksport — agar bitta hodim tanlangan bo'lsa, ism bilan
 async function exportAdminExcel() {
+    if (!canExportCompanyData) {
+        showToastMsg("❌ Kompaniya eksport ruxsati yo'q", true);
+        return;
+    }
     const empSelect = document.getElementById('filterEmployee');
     const empVal    = empSelect ? empSelect.value : 'all';
     const baseName  = empVal !== 'all'
@@ -171,7 +180,7 @@ async function exportAdminExcel() {
         if (typeof fetchAdminFilteredDataForExport === 'function') {
             exportData = await fetchAdminFilteredDataForExport();
         }
-        exportToBot(exportData, baseName);
+        exportToBot(exportData, baseName, "all");
     } catch (err) {
         showToastMsg('❌ ' + (err.message || 'Eksport xatosi'), true);
     }

@@ -2,13 +2,14 @@
 // TELEGRAM.GS — Telegram Bot API
 // ============================================================
 
-function tgSendMessage_(chatId, text, parseMode) {
+function tgSendMessage_(chatId, text, parseMode, replyMarkup) {
   var url = "https://api.telegram.org/bot" + CONFIG.BOT_TOKEN + "/sendMessage";
   var payload = {
     chat_id: String(chatId || ''),
     text: String(text || '')
   };
   if (parseMode) payload.parse_mode = parseMode;
+  if (replyMarkup) payload.reply_markup = replyMarkup;
 
   var options = {
     method: "post",

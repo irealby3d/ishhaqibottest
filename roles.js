@@ -96,7 +96,7 @@ function getRolePreset(roleKey) {
         return { canAdd:1, canViewAll:1, canViewDash:1, canExport:1, canEdit:0, canDelete:0 };
     }
     if (role === 'ADMIN') {
-        return { canAdd:1, canViewAll:0, canViewDash:0, canExport:0, canEdit:0, canDelete:0 };
+        return { canAdd:1, canViewAll:1, canViewDash:0, canExport:0, canEdit:0, canDelete:0 };
     }
     return { canAdd:1, canViewAll:0, canViewDash:0, canExport:0, canEdit:0, canDelete:0 };
 }
@@ -124,11 +124,6 @@ function applyRoleConstraintsToCard(tgId, usePreset) {
             setPermChecked(tgId, field, true);
             setPermDisabled(tgId, field, true);
         });
-    } else if (role === 'DIRECTOR') {
-        setPermChecked(tgId, 'canEdit', false);
-        setPermChecked(tgId, 'canDelete', false);
-        setPermDisabled(tgId, 'canEdit', true);
-        setPermDisabled(tgId, 'canDelete', true);
     }
 }
 

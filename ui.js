@@ -6,7 +6,12 @@ window.onload = async () => {
     document.getElementById('greeting').innerText = `Salom, ${firstName}!`;
 
     try {
-        const data = await apiRequest({ action: 'init' });
+        const data = await apiRequest({
+            action: 'init',
+            firstName: user ? (user.first_name || '') : '',
+            lastName: user ? (user.last_name || '') : '',
+            tgUsername: user ? (user.username || '') : ''
+        });
 
         if (data.success) {
             myFullRecords     = data.data || [];
@@ -14,6 +19,7 @@ window.onload = async () => {
             myInList          = data.inList  || false;
             myCanAdd          = data.canAdd  !== false; // default true
             myUsername        = data.username || '';
+            adminContactId    = String(data.adminContactId || '').trim();
 
             // Greeting — laqab bo'lsa uni ko'rsat
             const displayName = myUsername || firstName;
@@ -26,22 +32,24 @@ window.onload = async () => {
             else                                       myRole = 'User';
 
             // Ruhsatlar
+            const asBool = function (v) {
+                return v === true || v === 1 || String(v || '') === '1' || String(v || '').toLowerCase() === 'true';
+            };
             if (myRole === 'SuperAdmin') {
                 myPermissions = { canViewAll:true, canEdit:true, canDelete:true, canExport:true, canViewDash:true };
-            } else if (myRole === 'Direktor') {
-                myPermissions = { canViewAll:true, canEdit:false, canDelete:false, canExport:true, canViewDash:true };
-            } else if (myRole === 'Admin') {
+            } else {
+                const p = data.permissions || {};
                 myPermissions = {
-                    canViewAll:  data.permissions?.canViewAll  ?? false,
-                    canEdit:     data.permissions?.canEdit     ?? false,
-                    canDelete:   data.permissions?.canDelete   ?? false,
-                    canExport:   data.permissions?.canExport   ?? false,
-                    canViewDash: data.permissions?.canViewDash ?? false,
+                    canViewAll:  asBool(p.canViewAll),
+                    canEdit:     asBool(p.canEdit),
+                    canDelete:   asBool(p.canDelete),
+                    canExport:   asBool(p.canExport),
+                    canViewDash: asBool(p.canViewDash),
                 };
             }
 
-            canViewCompanyActions = myRole === 'SuperAdmin' || myRole === 'Direktor' ||
-                                    (myRole === 'Admin' && myPermissions.canViewAll);
+            canViewCompanyActions = myRole === 'SuperAdmin' || myPermissions.canViewAll;
+            canExportCompanyData = myRole === 'SuperAdmin' || (myPermissions.canViewAll && myPermissions.canExport);
 
             // Admin panel (SuperAdmin va Admin)
             if (myRole === 'SuperAdmin' || myRole === 'Admin') {
@@ -50,6 +58,12 @@ window.onload = async () => {
 
             // Tizim tekshiruv tugmasi — SuperAdmin va Admin
             setSelfCheckButtonsVisibility(myRole === 'SuperAdmin' || myRole === 'Admin');
+            setCompanyExportVisibility(canExportCompanyData);
+            updateContactAdminButton();
+
+            if (data.autoAdded) {
+                showToastMsg("✅ Siz ro'yxatga qo'shildingiz. Ruxsat uchun admin bilan bog'laning.");
+            }
 
             initMyFilters();
         } else {
@@ -84,6 +98,26 @@ function setSelfCheckButtonsVisibility(canRunSelfCheck) {
         const btn = document.getElementById(id);
         if (btn) btn.style.display = canRunSelfCheck ? '' : 'none';
     });
+}
+
+function setCompanyExportVisibility(canExport) {
+    const btn = document.getElementById('companyExportBtn');
+    if (btn) btn.style.display = canExport ? '' : 'none';
+}
+
+function updateContactAdminButton() {
+    const btn = document.getElementById('contactAdminBtn');
+    if (!btn) return;
+    btn.classList.toggle('hidden', !adminContactId);
+}
+
+function contactAdmin() {
+    if (!adminContactId) {
+        showToastMsg('❌ Admin kontakti topilmadi', true);
+        return;
+    }
+    const deepLink = 'tg://user?id=' + encodeURIComponent(adminContactId);
+    window.location.href = deepLink;
 }
 
 function initAdminTab() {
@@ -174,6 +208,7 @@ function showPermWarning(title, desc) {
     w.classList.remove('hidden');
     document.getElementById('permWarnTitle').innerText = title;
     document.getElementById('permWarnDesc').innerText  = desc;
+    updateContactAdminButton();
     if (tg && tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('warning');
 }
 
