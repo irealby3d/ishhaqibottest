@@ -318,7 +318,8 @@ function renderPaginationControls() {
 
 function goToPage(page) {
     fetchAdminPage(page);
-    document.getElementById('adminDataArea').scrollIntoView({ behavior: 'smooth' });
+    const area = document.getElementById('dashboardActionsArea') || document.getElementById('adminDataArea');
+    if (area) area.scrollIntoView({ behavior: 'smooth' });
 }
 
 function showAdminDetailModal(idx) {

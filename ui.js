@@ -40,14 +40,16 @@ window.onload = async () => {
                 };
             }
 
-            // Admin panel ko'rinishi
-            const showAdmin = myRole === 'SuperAdmin' || myRole === 'Direktor' ||
-                              (myRole === 'Admin' && myPermissions.canViewAll);
-            if (showAdmin) document.getElementById('nav-admin').classList.remove('hidden');
+            canViewCompanyActions = myRole === 'SuperAdmin' || myRole === 'Direktor' ||
+                                    (myRole === 'Admin' && myPermissions.canViewAll);
+
+            // Admin panel endi sozlamalar uchun (faqat SuperAdmin)
+            if (myRole === 'SuperAdmin') document.getElementById('nav-admin').classList.remove('hidden');
 
             // Hodimlar boshqaruvi — faqat SuperAdmin
             if (myRole === 'SuperAdmin') {
-                document.getElementById('bossNav').classList.remove('hidden');
+                const selfCheckBtn = document.getElementById('selfCheckBtn');
+                if (selfCheckBtn) selfCheckBtn.style.display = '';
             } else {
                 const selfCheckBtn = document.getElementById('selfCheckBtn');
                 if (selfCheckBtn) selfCheckBtn.style.display = 'none';
@@ -72,13 +74,45 @@ function switchTab(tabId, navId) {
         const el = document.getElementById(navId);
         if (el) el.classList.add('active');
     }
-    if (tabId === 'adminTab')     loadAdminData();
-    if (tabId === 'dashboardTab') loadDashboard();
+    if (tabId === 'adminTab') loadHodimlar();
+    if (tabId === 'dashboardTab') initDashboardTab();
 
     // + tugmasiga bosilganda ruxsatni tekshir
     if (tabId === 'addTab') {
         checkAddPermission();
     }
+}
+
+function initDashboardTab() {
+    const nav = document.getElementById('dashboardNav');
+    if (!canViewCompanyActions) {
+        if (nav) nav.classList.add('hidden');
+        const actionsArea = document.getElementById('dashboardActionsArea');
+        const chartsArea  = document.getElementById('dashboardChartsArea');
+        if (actionsArea) actionsArea.classList.add('hidden');
+        if (chartsArea) chartsArea.classList.remove('hidden');
+        loadDashboard();
+        return;
+    }
+
+    if (nav) nav.classList.remove('hidden');
+    const btnActions = document.getElementById('dashNavActions');
+    switchDashboardSub('dashboardActionsArea', btnActions || null);
+}
+
+function switchDashboardSub(areaId, btn) {
+    ['dashboardActionsArea', 'dashboardChartsArea'].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.classList.add('hidden');
+    });
+    document.querySelectorAll('.dash-sub-btn').forEach(b => b.classList.remove('active'));
+
+    const target = document.getElementById(areaId);
+    if (target) target.classList.remove('hidden');
+    if (btn) btn.classList.add('active');
+
+    if (areaId === 'dashboardActionsArea') loadAdminData();
+    if (areaId === 'dashboardChartsArea') loadDashboard();
 }
 
 // ---- + bosilganda ruxsat tekshiruvi ----
@@ -125,7 +159,7 @@ function showToastMsg(msg, isErr=false) {
 }
 
 function switchAdminSub(areaId, btn) {
-    ['adminDataArea','adminRolesArea','adminHodimlarArea'].forEach(id => {
+    ['adminRolesArea','adminHodimlarArea'].forEach(id => {
         const el = document.getElementById(id);
         if (el) el.classList.add('hidden');
     });
