@@ -119,26 +119,78 @@ function ensureEmployeeInfrastructure_(empSheet) {
     empSheet.getRange(1, 1, 1, requiredCols).setValues([nextHeaders]);
   }
 
-  var lastRow = empSheet.getLastRow();
-  if (lastRow < 2) return;
+  synchronizeEmployeeRowsToV2_(empSheet, false);
+}
 
-  // Existing rows may not have role set yet; infer from legacy flags once.
-  var rows = empSheet.getRange(2, 1, lastRow - 1, requiredCols).getValues();
-  var roleUpdates = [];
-  var hasRolePatch = false;
-  for (var r = 0; r < rows.length; r++) {
-    var roleRaw = String(rows[r][COL.ROLE] || '').trim();
-    if (roleRaw) {
-      roleUpdates.push([roleRaw]);
-      continue;
+function migrateHodimlarToV2(hideLegacyColumns) {
+  var sh = getSheets().empSheet;
+  ensureEmployeeInfrastructure_(sh);
+  return synchronizeEmployeeRowsToV2_(sh, hideLegacyColumns !== false);
+}
+
+function synchronizeEmployeeRowsToV2_(empSheet, hideLegacyColumns) {
+  if (!empSheet) return { success:false, error:'Hodimlar sheet topilmadi' };
+  var requiredCols = EMP_HEADERS.length;
+  var lastRow = empSheet.getLastRow();
+  if (lastRow < 2) {
+    if (hideLegacyColumns) {
+      try { empSheet.hideColumns(COL.CAN_ADD + 1, (COL.VIEW_DASH - COL.CAN_ADD + 1)); } catch (ignore) {}
+      try { empSheet.showColumns(COL.ROLE + 1, (COL.OVR_VIEW_DASH - COL.ROLE + 1)); } catch (ignore2) {}
     }
-    var inferredRole = deriveLegacyRoleFromRow_(rows[r]);
-    roleUpdates.push([inferredRole]);
-    hasRolePatch = true;
+    return { success:true, changedRows:0, totalRows:0 };
   }
-  if (hasRolePatch) {
-    empSheet.getRange(2, COL.ROLE + 1, roleUpdates.length, 1).setValues(roleUpdates);
+
+  var range = empSheet.getRange(2, 1, lastRow - 1, requiredCols);
+  var rows = range.getValues();
+  var changedRows = 0;
+
+  for (var i = 0; i < rows.length; i++) {
+    var row = rows[i];
+    var before = row.slice();
+    var tgId = String(row[COL.TG_ID] || '').trim();
+    if (!tgId) continue;
+
+    var current = resolveEmployeeAccessFromRow_(row);
+    var role = normalizeRole_(row[COL.ROLE], row);
+    var overrides = deriveOverridesForEffective_(role, current.canAdd, current.permissions);
+    var model = buildModelFromRoleAndOverrides_(role, overrides);
+
+    row[COL.CAN_ADD] = model.canAdd ? 1 : 0;
+    row[COL.SUPER_ADMIN] = model.isSuperAdmin ? 1 : 0;
+    row[COL.DIREKTOR] = model.isDirektor ? 1 : 0;
+    row[COL.ADMIN] = (model.isAdmin && !model.isSuperAdmin) ? 1 : 0;
+    row[COL.VIEW_ALL] = model.permissions.canViewAll ? 1 : 0;
+    row[COL.EDIT] = model.permissions.canEdit ? 1 : 0;
+    row[COL.DELETE] = model.permissions.canDelete ? 1 : 0;
+    row[COL.EXPORT] = model.permissions.canExport ? 1 : 0;
+    row[COL.VIEW_DASH] = model.permissions.canViewDash ? 1 : 0;
+
+    row[COL.ROLE] = model.roleKey;
+    row[COL.OVR_CAN_ADD] = overrideToCellValue_(model.overrides.canAdd);
+    row[COL.OVR_VIEW_ALL] = overrideToCellValue_(model.overrides.canViewAll);
+    row[COL.OVR_EDIT] = overrideToCellValue_(model.overrides.canEdit);
+    row[COL.OVR_DELETE] = overrideToCellValue_(model.overrides.canDelete);
+    row[COL.OVR_EXPORT] = overrideToCellValue_(model.overrides.canExport);
+    row[COL.OVR_VIEW_DASH] = overrideToCellValue_(model.overrides.canViewDash);
+
+    for (var c = 0; c < requiredCols; c++) {
+      if (String(before[c]) !== String(row[c])) {
+        changedRows++;
+        break;
+      }
+    }
   }
+
+  if (changedRows > 0) {
+    range.setValues(rows);
+  }
+
+  if (hideLegacyColumns) {
+    try { empSheet.hideColumns(COL.CAN_ADD + 1, (COL.VIEW_DASH - COL.CAN_ADD + 1)); } catch (ignore3) {}
+    try { empSheet.showColumns(COL.ROLE + 1, (COL.OVR_VIEW_DASH - COL.ROLE + 1)); } catch (ignore4) {}
+  }
+
+  return { success:true, changedRows:changedRows, totalRows:rows.length };
 }
 
 function ensureDataInfrastructure_(dataSheet) {
@@ -316,6 +368,19 @@ function roleDefaults_(roleKey) {
   return {
     canAdd: true,
     permissions: { canViewAll:false, canEdit:false, canDelete:false, canExport:false, canViewDash:false }
+  };
+}
+
+function deriveOverridesForEffective_(roleKey, effectiveCanAdd, effectivePerms) {
+  var defaults = roleDefaults_(roleKey);
+  var perms = effectivePerms || {};
+  return {
+    canAdd: (effectiveCanAdd === defaults.canAdd) ? null : !!effectiveCanAdd,
+    canViewAll: (Boolean(perms.canViewAll) === defaults.permissions.canViewAll) ? null : Boolean(perms.canViewAll),
+    canEdit: (Boolean(perms.canEdit) === defaults.permissions.canEdit) ? null : Boolean(perms.canEdit),
+    canDelete: (Boolean(perms.canDelete) === defaults.permissions.canDelete) ? null : Boolean(perms.canDelete),
+    canExport: (Boolean(perms.canExport) === defaults.permissions.canExport) ? null : Boolean(perms.canExport),
+    canViewDash: (Boolean(perms.canViewDash) === defaults.permissions.canViewDash) ? null : Boolean(perms.canViewDash)
   };
 }
 

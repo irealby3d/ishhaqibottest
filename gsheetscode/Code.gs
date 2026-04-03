@@ -95,6 +95,11 @@ function doPost(e) {
         result = deleteHodim(data.tgId);
         break;
 
+      case "migrate_hodimlar_v2":
+        if (!auth.isSuperAdmin) return sendJSON({ success:false, error:"Faqat SuperAdmin!" });
+        result = migrateHodimlarToV2(data.hideLegacyColumns !== false);
+        break;
+
       case "export_to_bot":
         var canExp = auth.canAdd || auth.isSuperAdmin || auth.isDirector ||
                     (auth.isAdmin && auth.permissions.canExport);
