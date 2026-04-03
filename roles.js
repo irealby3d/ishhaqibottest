@@ -19,7 +19,10 @@ async function loadHodimlar() {
         const res  = await fetch(API_URL, { method:'POST', body:JSON.stringify({ action:'get_hodimlar', telegramId }) });
         const data = await res.json();
 
-        if (!data.success) { list.innerHTML = `<div class="empty-state"><p style="color:var(--red);">${data.error}</p></div>`; return; }
+        if (!data.success) {
+            list.innerHTML = `<div class="empty-state"><p style="color:var(--red);">${escapeHtml(data.error || 'Xato')}</p></div>`;
+            return;
+        }
 
         if (!data.data.length) {
             list.innerHTML = `<div class="empty-state"><div class="empty-icon">👥</div><p>Hali hodim qo'shilmagan</p></div>`;
@@ -28,6 +31,9 @@ async function loadHodimlar() {
 
         let html = '';
         data.data.forEach(h => {
+            const safeTgId = String(h.tgId || '').replace(/[^\d]/g, '');
+            const safeUsername = escapeHtml(h.username || '—');
+            const safeUsernameValue = escapeHtml(h.username || '');
             const roleBadge = h.isSuperAdmin ? '<span class="role-badge boss">👑 SuperAdmin</span>'
                             : h.isDirektor   ? '<span class="role-badge direktor">🎯 Direktor</span>'
                             : h.isAdmin      ? '<span class="role-badge admin">🛡 Admin</span>'
@@ -39,12 +45,12 @@ async function loadHodimlar() {
                 <!-- Sarlavha: ism + ID + o'chirish -->
                 <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
                     <div style="flex:1;min-width:0;">
-                        <div class="role-item-name">${h.username || '—'}</div>
-                        <div class="role-item-id">ID: ${h.tgId}</div>
+                        <div class="role-item-name">${safeUsername}</div>
+                        <div class="role-item-id">ID: ${safeTgId || '—'}</div>
                     </div>
                     <div style="display:flex;gap:8px;align-items:center;flex-shrink:0;">
                         ${roleBadge}
-                        <button class="del-icon-btn" onclick="deleteHodim('${h.tgId}')">🗑</button>
+                        <button class="del-icon-btn" onclick="deleteHodim('${safeTgId}')">🗑</button>
                     </div>
                 </div>
 
@@ -56,8 +62,8 @@ async function loadHodimlar() {
                         👤 Ko'rsatiladigan ism (UserName)
                     </label>
                     <input type="text"
-                           id="uname_${h.tgId}"
-                           value="${h.username || ''}"
+                           id="uname_${safeTgId}"
+                           value="${safeUsernameValue}"
                            placeholder="Masalan: Ali (Haydovchi)"
                            style="width:100%;padding:10px 12px;border:1.5px solid var(--border);
                                   border-radius:var(--radius-sm);font-size:14px;
@@ -65,24 +71,24 @@ async function loadHodimlar() {
                 </div>
 
                 <!-- Ruxsatlar — collapsible -->
-                <button class="perm-toggle-btn" id="hbtn_${h.tgId}"
-                        onclick="toggleHodimPerms('${h.tgId}')">
+                <button class="perm-toggle-btn" id="hbtn_${safeTgId}"
+                        onclick="toggleHodimPerms('${safeTgId}')">
                     <span>🔐 Ruxsatlarni sozlash</span>
                     <span class="perm-arrow">▼</span>
                 </button>
-                <div class="perm-body" id="hbody_${h.tgId}">
+                <div class="perm-body" id="hbody_${safeTgId}">
                     <div class="hodim-perms-grid">
-                        ${permToggle(h.tgId,'canAdd',      h.canAdd,      '➕ Amal qo\'shish')}
-                        ${permToggle(h.tgId,'isSuperAdmin',h.isSuperAdmin,'👑 SuperAdmin')}
-                        ${permToggle(h.tgId,'isDirektor',  h.isDirektor,  '🎯 Direktor')}
-                        ${permToggle(h.tgId,'isAdmin',     h.isAdmin,     '🛡 Admin')}
-                        ${permToggle(h.tgId,'canViewAll',  h.canViewAll,  '👁 Barchasini ko\'rish')}
-                        ${permToggle(h.tgId,'canEdit',     h.canEdit,     '✏️ Tahrirlash')}
-                        ${permToggle(h.tgId,'canDelete',   h.canDelete,   '🗑 O\'chirish')}
-                        ${permToggle(h.tgId,'canExport',   h.canExport,   '📥 Excel')}
-                        ${permToggle(h.tgId,'canViewDash', h.canViewDash, '📈 Dashboard')}
+                        ${permToggle(safeTgId,'canAdd',      h.canAdd,      '➕ Amal qo\'shish')}
+                        ${permToggle(safeTgId,'isSuperAdmin',h.isSuperAdmin,'👑 SuperAdmin')}
+                        ${permToggle(safeTgId,'isDirektor',  h.isDirektor,  '🎯 Direktor')}
+                        ${permToggle(safeTgId,'isAdmin',     h.isAdmin,     '🛡 Admin')}
+                        ${permToggle(safeTgId,'canViewAll',  h.canViewAll,  '👁 Barchasini ko\'rish')}
+                        ${permToggle(safeTgId,'canEdit',     h.canEdit,     '✏️ Tahrirlash')}
+                        ${permToggle(safeTgId,'canDelete',   h.canDelete,   '🗑 O\'chirish')}
+                        ${permToggle(safeTgId,'canExport',   h.canExport,   '📥 Excel')}
+                        ${permToggle(safeTgId,'canViewDash', h.canViewDash, '📈 Dashboard')}
                     </div>
-                    <button class="perm-save-btn" onclick="saveHodim('${h.tgId}')">💾 Saqlash</button>
+                    <button class="perm-save-btn" onclick="saveHodim('${safeTgId}')">💾 Saqlash</button>
                 </div>
             </div>`;
         });

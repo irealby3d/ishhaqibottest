@@ -3,6 +3,10 @@
 function showDetailModal(r, canEdit) {
     const uzs  = Number(r.amountUZS) || 0;
     const usd  = Number(r.amountUSD) || 0;
+    const rowId = Number(r.rowId) || 0;
+    const safeName = escapeHtml(r.name || '—');
+    const safeComment = escapeHtml(r.comment || '—');
+    const safeDate = escapeHtml(r.date || '—');
     // FIX: rate turli fieldlarda kelishi mumkin
     const rate = Number(r.rate) || Number(r.exchangeRate) || Number(r.kurs) || 0;
     const isUsd = usd > 0;
@@ -38,7 +42,7 @@ function showDetailModal(r, canEdit) {
     }
 
     const nameRow = r.name
-        ? `<div class="detail-row"><span class="detail-key">Xodim</span><span class="detail-val"><strong>${r.name}</strong></span></div>`
+        ? `<div class="detail-row"><span class="detail-key">Xodim</span><span class="detail-val"><strong>${safeName}</strong></span></div>`
         : '';
 
     let actionBtns = '';
@@ -48,9 +52,9 @@ function showDetailModal(r, canEdit) {
         actionBtns = `
         <div style="display:flex;gap:10px;margin-top:16px;padding-top:16px;border-top:1px solid var(--border);">
             ${canEd  ? `<button class="edit-btn" style="flex:1;padding:13px;border-radius:10px;font-size:14px;"
-                onclick="closeDetailModal();openEdit(${r.rowId})">✏️ Tahrirlash</button>` : ''}
+                onclick="closeDetailModal();openEdit(${rowId})">✏️ Tahrirlash</button>` : ''}
             ${canDel ? `<button class="del-btn" style="flex:1;padding:13px;border-radius:10px;font-size:14px;"
-                onclick="closeDetailModal();deleteRecord(${r.rowId})">🗑 O'chirish</button>` : ''}
+                onclick="closeDetailModal();deleteRecord(${rowId})">🗑 O'chirish</button>` : ''}
         </div>`;
     }
 
@@ -58,8 +62,8 @@ function showDetailModal(r, canEdit) {
         <div class="modal-drag"></div>
         <div class="detail-header">
             ${currencyBadge}
-            <div class="detail-comment">${r.comment || '—'}</div>
-            <div class="detail-date">📅 ${r.date || '—'}</div>
+            <div class="detail-comment">${safeComment}</div>
+            <div class="detail-date">📅 ${safeDate}</div>
         </div>
         <div class="detail-card">
             ${nameRow}

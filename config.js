@@ -28,3 +28,13 @@ let myPermissions = {
   canViewAll:false, canEdit:false,
   canDelete:false, canExport:false, canViewDash:false
 };
+
+// Keep template rendering safe when using innerHTML with server-provided values.
+function escapeHtml(value) {
+  return String(value ?? '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}

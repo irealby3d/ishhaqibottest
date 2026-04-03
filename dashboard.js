@@ -343,7 +343,7 @@ function renderUserDashboard(el) {
 // ============================================================
 function renderAdminDashboard(el) {
     const my = myFullRecords;
-    const showCompany = myPermissions.canViewDashboard && globalAdminData.length > 0;
+    const showCompany = myPermissions.canViewDash && globalAdminData.length > 0;
     const all     = showCompany ? globalAdminData : [];
     const months6 = getLastNMonths(6);
     const bycat   = sumByCategory(my);

@@ -9,7 +9,12 @@ function initMyFilters() {
     let years = new Set();
     myFullRecords.forEach(r => { if (r.date) years.add(r.date.split('/')[2]); });
     yearSel.innerHTML = '<option value="all">Yillar</option>';
-    Array.from(years).sort((a,b)=>b-a).forEach(y=>yearSel.innerHTML+=`<option value="${y}">${y}</option>`);
+    Array.from(years).sort((a,b)=>b-a).forEach(y => {
+        const option = document.createElement('option');
+        option.value = y;
+        option.textContent = y;
+        yearSel.appendChild(option);
+    });
     applyMyFilters();
 }
 
@@ -57,11 +62,13 @@ function renderMyPage() {
         const rate=Number(r.rate)||0;
         const effRate=rate>0?rate:(usd>0&&uzs>0?Math.round(uzs/usd):0);
         const origIdx=myFilteredRecords.length-1-start-i;
+        const safeComment = escapeHtml(r.comment || '—');
+        const safeDate = escapeHtml(r.date || '—');
         html+=`
         <div class="history-item" onclick="showMyDetailModal(${origIdx})" style="cursor:pointer;">
             <div class="item-header">
-                <span class="item-name">📝 ${r.comment||'—'}</span>
-                <span class="item-date">${r.date||'—'}</span>
+                <span class="item-name">📝 ${safeComment}</span>
+                <span class="item-date">${safeDate}</span>
             </div>
             <div class="item-amounts">
                 ${uzs>0?`<span class="amount-chip uzs">💰 ${uzs.toLocaleString()} UZS</span>`:''}

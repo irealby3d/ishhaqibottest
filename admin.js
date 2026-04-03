@@ -25,11 +25,12 @@ async function loadAdminData() {
 }
 
 function showAdminError(msg) {
+    const safeMsg = escapeHtml(msg || 'Server xatosi');
     document.getElementById('adminList').innerHTML = `
         <div class="empty-state">
             <div class="empty-icon">⚠️</div>
             <p style="color:#EF4444;font-weight:700;">Yuklanmadi</p>
-            <p style="font-size:12px;margin-top:6px;color:var(--text-muted);">${msg}</p>
+            <p style="font-size:12px;margin-top:6px;color:var(--text-muted);">${safeMsg}</p>
             <button class="btn-main bg-navy" style="margin-top:16px;width:auto;padding:10px 24px;" onclick="loadAdminData()">🔄 Qayta urinish</button>
         </div>`;
 }
@@ -44,8 +45,18 @@ function populateFilters() {
     });
     empSel.innerHTML  = '<option value="all">Barcha xodimlar</option>';
     yearSel.innerHTML = '<option value="all">Yillar</option>';
-    Array.from(emps).sort().forEach(e => empSel.innerHTML  += `<option value="${e}">${e}</option>`);
-    Array.from(years).sort((a,b) => b-a).forEach(y => yearSel.innerHTML += `<option value="${y}">${y}</option>`);
+    Array.from(emps).sort().forEach(e => {
+        const option = document.createElement('option');
+        option.value = e;
+        option.textContent = e;
+        empSel.appendChild(option);
+    });
+    Array.from(years).sort((a,b) => b-a).forEach(y => {
+        const option = document.createElement('option');
+        option.value = y;
+        option.textContent = y;
+        yearSel.appendChild(option);
+    });
 }
 
 let debounceTimer;
@@ -102,14 +113,17 @@ function renderAdminPage() {
         const isUsd = Number(r.amountUSD) > 0;
         const rate  = Number(r.rate) || Number(r.exchangeRate) || 0;
         const effRate = rate > 0 ? rate : (isUsd && r.amountUZS > 0 ? Math.round(r.amountUZS/r.amountUSD) : 0);
+        const safeName = escapeHtml(r.name || '—');
+        const safeDate = escapeHtml(r.date || '—');
+        const safeComment = escapeHtml(r.comment || '—');
 
         html += `
         <div class="history-item" onclick="showAdminDetailModal(${gIdx})" style="cursor:pointer;">
             <div class="item-header">
-                <span class="item-name">👤 ${r.name || '—'}</span>
-                <span class="item-date">${r.date || '—'}</span>
+                <span class="item-name">👤 ${safeName}</span>
+                <span class="item-date">${safeDate}</span>
             </div>
-            <div class="item-comment">📝 ${r.comment || '—'}</div>
+            <div class="item-comment">📝 ${safeComment}</div>
             <div class="item-amounts">
                 ${Number(r.amountUZS) > 0 ? `<span class="amount-chip uzs">💰 ${Number(r.amountUZS).toLocaleString()} UZS</span>` : ''}
                 ${isUsd ? `<span class="amount-chip usd">💵 $${Number(r.amountUSD).toLocaleString()}</span>` : ''}
