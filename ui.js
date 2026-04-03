@@ -43,11 +43,13 @@ window.onload = async () => {
             canViewCompanyActions = myRole === 'SuperAdmin' || myRole === 'Direktor' ||
                                     (myRole === 'Admin' && myPermissions.canViewAll);
 
-            // Admin panel endi sozlamalar uchun (faqat SuperAdmin)
-            if (myRole === 'SuperAdmin') document.getElementById('nav-admin').classList.remove('hidden');
+            // Admin panel (SuperAdmin va Admin)
+            if (myRole === 'SuperAdmin' || myRole === 'Admin') {
+                document.getElementById('nav-admin').classList.remove('hidden');
+            }
 
-            // Tizim tekshiruv tugmasi — faqat SuperAdmin
-            setSelfCheckButtonsVisibility(myRole === 'SuperAdmin');
+            // Tizim tekshiruv tugmasi — SuperAdmin va Admin
+            setSelfCheckButtonsVisibility(myRole === 'SuperAdmin' || myRole === 'Admin');
 
             initMyFilters();
         } else {
@@ -77,21 +79,37 @@ function switchTab(tabId, navId) {
     }
 }
 
-function setSelfCheckButtonsVisibility(isSuperAdmin) {
-    ['selfCheckBtn', 'selfCheckBtnAdmin'].forEach(function (id) {
+function setSelfCheckButtonsVisibility(canRunSelfCheck) {
+    ['selfCheckBtnAdmin'].forEach(function (id) {
         const btn = document.getElementById(id);
-        if (btn) btn.style.display = isSuperAdmin ? '' : 'none';
+        if (btn) btn.style.display = canRunSelfCheck ? '' : 'none';
     });
 }
 
 function initAdminTab() {
-    const btnHodimlar = document.getElementById('adminNavHodimlar');
-    if (btnHodimlar) {
-        switchAdminSub('adminHodimlarArea', btnHodimlar);
+    const isSuperAdmin = myRole === 'SuperAdmin';
+    const canUseAdminPanel = isSuperAdmin || myRole === 'Admin';
+    if (!canUseAdminPanel) {
+        showToastMsg('❌ Admin panel ruxsati yo\'q', true);
+        switchTab('reportTab', 'nav-report');
         return;
     }
-    // fallback
-    loadHodimlar();
+
+    const navHodimlar = document.getElementById('adminNavHodimlar');
+    const navNotify = document.getElementById('adminNavNotify');
+    const navService = document.getElementById('adminNavService');
+
+    if (navHodimlar) navHodimlar.classList.toggle('hidden', !isSuperAdmin);
+    if (navNotify) navNotify.classList.remove('hidden');
+    if (navService) navService.classList.remove('hidden');
+
+    if (isSuperAdmin && navHodimlar) {
+        switchAdminSub('adminHodimlarArea', navHodimlar);
+    } else if (navNotify) {
+        switchAdminSub('adminNotifyArea', navNotify);
+    } else if (navService) {
+        switchAdminSub('adminServiceArea', navService);
+    }
 }
 
 function initDashboardTab() {
@@ -170,6 +188,10 @@ function showToastMsg(msg, isErr=false) {
 }
 
 function switchAdminSub(areaId, btn) {
+    if (areaId === 'adminHodimlarArea' && myRole !== 'SuperAdmin') {
+        showToastMsg('❌ Hodimlar bo\'limi faqat SuperAdmin uchun', true);
+        return;
+    }
     ['adminHodimlarArea', 'adminNotifyArea', 'adminServiceArea'].forEach(id => {
         const el = document.getElementById(id);
         if (el) el.classList.add('hidden');
@@ -183,6 +205,8 @@ function switchAdminSub(areaId, btn) {
     if (areaId === 'adminHodimlarArea') loadHodimlar();
     if (areaId === 'adminNotifyArea') {
         loadNotifyTargets();
+        loadReminderTextSettings();
+        cancelReminderSend();
         setNotifyStatus('', false, 'admin');
     }
     if (areaId === 'adminServiceArea') {

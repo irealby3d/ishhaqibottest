@@ -1038,14 +1038,38 @@ function getInactiveUsers(days) {
   return { success:true, days:threshold, count:out.length, data:out };
 }
 
-function sendUserReminder(tgId, actorTgId) {
+function sanitizeReminderText_(text) {
+  var t = String(text || '').trim();
+  if (!t) return '';
+  if (t.length > 3000) return '__TOO_LONG__';
+  return t;
+}
+
+function getReminderTextSetting(actorTgId) {
+  var text = getReminderTemplate_();
+  return { success:true, text:String(text || '') };
+}
+
+function setReminderTextSetting(text, actorTgId) {
+  var sanitized = sanitizeReminderText_(text);
+  if (!sanitized) return { success:false, error:'Matn bo\'sh bo\'lmasin' };
+  if (sanitized === '__TOO_LONG__') return { success:false, error:'Matn juda uzun (max 3000)' };
+
+  var saved = setReminderTemplate_(sanitized);
+  addAuditLog_(actorTgId, 'set_reminder_text', '', null, { textLength: String(saved || '').length }, 'updated');
+  return { success:true, text:String(saved || '') };
+}
+
+function sendUserReminder(tgId, actorTgId, reminderText) {
   var targetId = String(tgId || '').trim();
   if (!targetId) return { success:false, error:'Foydalanuvchi tanlanmagan' };
   if (isConfigSuperAdminId_(targetId)) return { success:false, error:'Config SuperAdmin ga xabar yuborish cheklangan' };
+  var customText = sanitizeReminderText_(reminderText);
+  if (customText === '__TOO_LONG__') return { success:false, error:'Matn juda uzun (max 3000)' };
 
   var emp = getEmployee(targetId);
   var username = emp ? emp.username : '';
-  var sendRes = sendSalaryReminderToUser(targetId, username);
+  var sendRes = sendSalaryReminderToUser(targetId, username, customText);
   if (!sendRes || !sendRes.ok) {
     addAuditLog_(actorTgId, 'send_user_reminder', '', null, { tgId: targetId, ok:false }, String((sendRes && sendRes.description) || 'failed'));
     return { success:false, error: String((sendRes && sendRes.description) || 'Xabar yuborilmadi') };
@@ -1055,9 +1079,11 @@ function sendUserReminder(tgId, actorTgId) {
   return { success:true };
 }
 
-function sendInactiveReminders(days, actorTgId) {
+function sendInactiveReminders(days, actorTgId, reminderText) {
   var inactive = getInactiveUsers(days);
   if (!inactive.success) return inactive;
+  var customText = sanitizeReminderText_(reminderText);
+  if (customText === '__TOO_LONG__') return { success:false, error:'Matn juda uzun (max 3000)' };
 
   var sent = 0;
   var failed = 0;
@@ -1065,7 +1091,7 @@ function sendInactiveReminders(days, actorTgId) {
 
   for (var i = 0; i < inactive.data.length; i++) {
     var u = inactive.data[i];
-    var sendRes = sendSalaryReminderToUser(u.tgId, u.username);
+    var sendRes = sendSalaryReminderToUser(u.tgId, u.username, customText);
     if (sendRes && sendRes.ok) {
       sent++;
     } else {

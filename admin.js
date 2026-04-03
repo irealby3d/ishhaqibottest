@@ -8,6 +8,8 @@ let adminFiltersReady = false;
 let adminReqSerial = 0;
 let adminFilterDebounceTimer;
 let notifyUsersLoaded = false;
+let reminderTextLoaded = false;
+let pendingReminderSend = null;
 
 function getAdminFilterState() {
     return {
@@ -182,7 +184,108 @@ async function loadNotifyTargets() {
     }
 }
 
-async function sendUserReminderFromPanel(scope) {
+function getAdminReminderTextValue() {
+    const el = document.getElementById('adminReminderText');
+    return el ? String(el.value || '').trim() : '';
+}
+
+async function loadReminderTextSettings(forceReload) {
+    if (reminderTextLoaded && !forceReload) return;
+    const textEl = document.getElementById('adminReminderText');
+    if (!textEl) return;
+    try {
+        const data = await apiRequest({ action: 'get_reminder_text' });
+        if (!data.success) {
+            setNotifyStatus('❌ ' + (data.error || 'Matn yuklanmadi'), true, 'admin');
+            return;
+        }
+        textEl.value = String(data.text || '');
+        reminderTextLoaded = true;
+    } catch {
+        setNotifyStatus('❌ Matn yuklanmadi', true, 'admin');
+    }
+}
+
+async function saveReminderTextSettings() {
+    const text = getAdminReminderTextValue();
+    if (!text) {
+        setNotifyStatus('❗ Xabar matni bo\'sh bo\'lmasin', true, 'admin');
+        return;
+    }
+    setNotifyStatus('⏳ Matn saqlanmoqda...', false, 'admin');
+    try {
+        const data = await apiRequest({ action: 'set_reminder_text', text: text });
+        if (!data.success) {
+            setNotifyStatus('❌ ' + (data.error || 'Saqlanmadi'), true, 'admin');
+            return;
+        }
+        reminderTextLoaded = true;
+        setNotifyStatus('✅ Default xabar matni saqlandi', false, 'admin');
+    } catch {
+        setNotifyStatus('❌ Server xatosi', true, 'admin');
+    }
+}
+
+function prepareReminderSend(type) {
+    const text = getAdminReminderTextValue();
+    if (!text) {
+        setNotifyStatus('❗ Avval xabar matnini kiriting', true, 'admin');
+        return;
+    }
+
+    if (type === 'single') {
+        const select = document.getElementById('adminNotifyTargetTgId');
+        const tgId = select ? String(select.value || '').trim() : '';
+        if (!tgId) {
+            setNotifyStatus('❗ Avval user tanlang', true, 'admin');
+            return;
+        }
+        const label = select.options[select.selectedIndex] ? select.options[select.selectedIndex].textContent : tgId;
+        pendingReminderSend = { type: 'single', targetTgId: tgId, label: label, messageText: text };
+        showReminderConfirmBox('Tanlangan userga yuborishga tayyor. Tasdiqlang: ' + label);
+        setNotifyStatus('⏳ Tasdiqlash kutilmoqda', false, 'admin');
+        return;
+    }
+
+    const daysEl = document.getElementById('adminInactiveDays');
+    const days = daysEl ? Number(daysEl.value || 0) : 0;
+    if (!Number.isFinite(days) || days < 1) {
+        setNotifyStatus('❗ Kun sonini to\'g\'ri kiriting', true, 'admin');
+        return;
+    }
+    pendingReminderSend = { type: 'inactive', days: days, messageText: text };
+    showReminderConfirmBox('Faol bo\'lmaganlarga yuborishga tayyor. Kun: ' + days);
+    setNotifyStatus('⏳ Tasdiqlash kutilmoqda', false, 'admin');
+}
+
+function showReminderConfirmBox(message) {
+    const box = document.getElementById('adminNotifyConfirmBox');
+    const txt = document.getElementById('adminNotifyConfirmText');
+    if (!box || !txt) return;
+    txt.innerText = message || 'Tasdiqlash kutilmoqda';
+    box.classList.remove('hidden');
+}
+
+function cancelReminderSend() {
+    pendingReminderSend = null;
+    const box = document.getElementById('adminNotifyConfirmBox');
+    if (box) box.classList.add('hidden');
+}
+
+async function confirmReminderSend() {
+    if (!pendingReminderSend) {
+        setNotifyStatus('❗ Tasdiqlash uchun tayyorlangan amal yo\'q', true, 'admin');
+        return;
+    }
+    if (pendingReminderSend.type === 'single') {
+        await sendUserReminderFromPanel('admin', pendingReminderSend.messageText);
+    } else {
+        await sendInactiveRemindersFromPanel('admin', pendingReminderSend.messageText);
+    }
+    cancelReminderSend();
+}
+
+async function sendUserReminderFromPanel(scope, messageText) {
     const mode = scope === 'admin' ? 'admin' : 'dashboard';
     const selectId = mode === 'admin' ? 'adminNotifyTargetTgId' : 'notifyTargetTgId';
     const select = document.getElementById(selectId);
@@ -194,7 +297,10 @@ async function sendUserReminderFromPanel(scope) {
 
     setNotifyStatus('⏳ Xabar yuborilmoqda...', false, mode);
     try {
-        const data = await apiRequest({ action: 'send_user_reminder', targetTgId: tgId });
+        const payload = { action: 'send_user_reminder', targetTgId: tgId };
+        const msg = String(messageText || '').trim();
+        if (msg) payload.messageText = msg;
+        const data = await apiRequest(payload);
         if (data.success) {
             setNotifyStatus('✅ Userga xabar yuborildi', false, mode);
         } else {
@@ -205,7 +311,7 @@ async function sendUserReminderFromPanel(scope) {
     }
 }
 
-async function sendInactiveRemindersFromPanel(scope) {
+async function sendInactiveRemindersFromPanel(scope, messageText) {
     const mode = scope === 'admin' ? 'admin' : 'dashboard';
     const daysId = mode === 'admin' ? 'adminInactiveDays' : 'inactiveDays';
     const daysEl = document.getElementById(daysId);
@@ -217,7 +323,10 @@ async function sendInactiveRemindersFromPanel(scope) {
 
     setNotifyStatus('⏳ Faol bo\'lmagan userlarga yuborilmoqda...', false, mode);
     try {
-        const data = await apiRequest({ action: 'send_inactive_reminders', days }, { timeoutMs: 60000 });
+        const payload = { action: 'send_inactive_reminders', days };
+        const msg = String(messageText || '').trim();
+        if (msg) payload.messageText = msg;
+        const data = await apiRequest(payload, { timeoutMs: 60000 });
         if (data.success) {
             setNotifyStatus(`✅ Yuborildi: ${data.sent}/${data.total} ta`, false, mode);
         } else {

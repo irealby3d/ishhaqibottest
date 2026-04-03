@@ -112,16 +112,26 @@ function doPost(e) {
 
       case "send_user_reminder":
         if (!(auth.isSuperAdmin || auth.isDirector || auth.isAdmin)) return sendJSON({ success:false, error:"Ruxsat yo'q!" });
-        result = sendUserReminder(data.targetTgId, tgId);
+        result = sendUserReminder(data.targetTgId, tgId, data.messageText);
         break;
 
       case "send_inactive_reminders":
         if (!(auth.isSuperAdmin || auth.isDirector || auth.isAdmin)) return sendJSON({ success:false, error:"Ruxsat yo'q!" });
-        result = sendInactiveReminders(data.days, tgId);
+        result = sendInactiveReminders(data.days, tgId, data.messageText);
+        break;
+
+      case "get_reminder_text":
+        if (!(auth.isSuperAdmin || auth.isAdmin)) return sendJSON({ success:false, error:"Ruxsat yo'q!" });
+        result = getReminderTextSetting(tgId);
+        break;
+
+      case "set_reminder_text":
+        if (!(auth.isSuperAdmin || auth.isAdmin)) return sendJSON({ success:false, error:"Ruxsat yo'q!" });
+        result = setReminderTextSetting(data.text, tgId);
         break;
 
       case "self_check":
-        if (!auth.isSuperAdmin) return sendJSON({ success:false, error:"Faqat SuperAdmin!" });
+        if (!(auth.isSuperAdmin || auth.isAdmin)) return sendJSON({ success:false, error:"Ruxsat yo'q!" });
         result = runSystemSelfCheck_();
         break;
 
@@ -186,7 +196,8 @@ function getRateLimitSeconds_(action) {
   var a = String(action || '');
   if (a === 'add' || a === 'admin_edit' || a === 'admin_delete' ||
       a === 'add_hodim' || a === 'update_hodim' || a === 'delete_hodim' ||
-      a === 'send_user_reminder' || a === 'send_inactive_reminders') return 2;
+      a === 'send_user_reminder' || a === 'send_inactive_reminders' ||
+      a === 'set_reminder_text') return 2;
   if (a === 'export_to_bot') return 5;
   return 0;
 }

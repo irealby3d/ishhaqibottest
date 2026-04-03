@@ -39,18 +39,35 @@ function sendTelegramNotification(data) {
   tgSendMessage_(CONFIG.CHAT_ID, msg, "HTML");
 }
 
-function getReminderMessage_(username) {
+function getDefaultReminderTemplate_() {
   var base = String((CONFIG && CONFIG.REMINDER_TEXT) || '').trim();
-  if (!base) {
-    base = "⚠️ Eslatma!\nKompaniya kelajagi uchun olgan avans va oyliklaringizni botga o'z vaqtida yozib qo'ying. Rahmat.";
-  }
+  if (base) return base;
+  return "⚠️ Eslatma!\nKompaniya kelajagi uchun olgan avans va oyliklaringizni botga o'z vaqtida yozib qo'ying. Rahmat.";
+}
+
+function getReminderTemplate_() {
+  var props = PropertiesService.getScriptProperties();
+  var saved = props ? String(props.getProperty('REMINDER_TEXT') || '').trim() : '';
+  return saved || getDefaultReminderTemplate_();
+}
+
+function setReminderTemplate_(text) {
+  var normalized = String(text || '').trim() || getDefaultReminderTemplate_();
+  var props = PropertiesService.getScriptProperties();
+  if (props) props.setProperty('REMINDER_TEXT', normalized);
+  return normalized;
+}
+
+function getReminderMessage_(username, customText) {
+  var base = String(customText || '').trim();
+  if (!base) base = getReminderTemplate_();
   var who = username ? ("👤 " + String(username) + "\n") : "";
   return who + base;
 }
 
-function sendSalaryReminderToUser(tgId, username) {
+function sendSalaryReminderToUser(tgId, username, customText) {
   if (!tgId) return { ok:false, description:'tgId topilmadi' };
-  return tgSendMessage_(tgId, getReminderMessage_(username), null);
+  return tgSendMessage_(tgId, getReminderMessage_(username, customText), null);
 }
 
 function sendSystemAlert(message) {
