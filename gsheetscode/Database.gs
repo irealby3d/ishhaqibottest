@@ -133,12 +133,71 @@ function checkUserRoles(tgId) {
 
 function formatDateCell(val) {
   if (!val || val === '') return '';
-  if (Object.prototype.toString.call(val) === '[object Date]') {
-    try {
-      return Utilities.formatDate(val, Session.getScriptTimeZone(), 'dd/MM/yyyy');
-    } catch(e) { return ''; }
-  }
+  var parsed = parseDateInput_(val, null);
+  if (parsed) return parsed.display;
   return String(val);
+}
+
+function parseDateInput_(dateValue, dateISOValue) {
+  // Prefer explicit ISO from frontend when available.
+  var parsed = parseDateRaw_(dateISOValue);
+  if (!parsed) parsed = parseDateRaw_(dateValue);
+  return parsed;
+}
+
+function parseDateRaw_(raw) {
+  if (raw === null || raw === undefined || raw === '') return null;
+
+  if (Object.prototype.toString.call(raw) === '[object Date]') {
+    if (isNaN(raw.getTime())) return null;
+    return buildDateMeta_(raw.getFullYear(), raw.getMonth() + 1, raw.getDate());
+  }
+
+  if (typeof raw === 'number' && isFinite(raw)) {
+    // Excel serial date fallback.
+    var serial = Math.floor(raw);
+    var utc = new Date(Date.UTC(1899, 11, 30) + serial * 86400000);
+    return buildDateMeta_(utc.getUTCFullYear(), utc.getUTCMonth() + 1, utc.getUTCDate());
+  }
+
+  var str = String(raw).trim();
+  if (!str || str === 'undefined' || str === 'null') return null;
+
+  var m;
+
+  // ISO: YYYY-MM-DD or YYYY-MM-DDTHH:mm:ss...
+  m = str.match(/^(\d{4})-(\d{2})-(\d{2})(?:[T\s].*)?$/);
+  if (m) return buildDateMeta_(Number(m[1]), Number(m[2]), Number(m[3]));
+
+  // DD/MM/YYYY (also supports DD.MM.YYYY, DD-MM-YYYY)
+  m = str.match(/^(\d{1,2})[\/.\-](\d{1,2})[\/.\-](\d{4})$/);
+  if (m) return buildDateMeta_(Number(m[3]), Number(m[2]), Number(m[1]));
+
+  return null;
+}
+
+function buildDateMeta_(y, m, d) {
+  if (!isValidYmd_(y, m, d)) return null;
+  var dd = ('0' + d).slice(-2);
+  var mm = ('0' + m).slice(-2);
+  var yy = String(y);
+  return {
+    year: yy,
+    month: mm,
+    day: dd,
+    iso: yy + '-' + mm + '-' + dd,
+    display: dd + '/' + mm + '/' + yy,
+    dateObj: new Date(y, m - 1, d)
+  };
+}
+
+function isValidYmd_(y, m, d) {
+  if (!isFinite(y) || !isFinite(m) || !isFinite(d)) return false;
+  if (y < 1900 || y > 2200) return false;
+  if (m < 1 || m > 12) return false;
+  if (d < 1 || d > 31) return false;
+  var dt = new Date(y, m - 1, d);
+  return dt.getFullYear() === y && (dt.getMonth() + 1) === m && dt.getDate() === d;
 }
 
 function initUser(tgId, auth) {
@@ -205,6 +264,9 @@ function addRecord(data, auth) {
   // Ko'rsatiladigan ism — username (laqab) yoki Telegram ismi
   var displayName = (emp && emp.username) ? emp.username : (data.employeeName || '');
 
+  var parsedDate = parseDateInput_(data.date, data.dateISO);
+  if (!parsedDate) parsedDate = parseDateInput_(new Date(), null);
+
   dataSheet.appendRow([
     displayName,
     data.telegramId   || '',
@@ -212,10 +274,18 @@ function addRecord(data, auth) {
     Number(data.amountUSD) || 0,
     Number(data.rate)      || 0,
     data.comment      || '',
-    data.date         || ''
+    parsedDate.dateObj
   ]);
+  dataSheet.getRange(dataSheet.getLastRow(), 7).setNumberFormat('dd/MM/yyyy');
 
-  sendTelegramNotification(data, displayName);
+  sendTelegramNotification({
+    employeeName: displayName,
+    amountUZS: Number(data.amountUZS) || 0,
+    amountUSD: Number(data.amountUSD) || 0,
+    rate: Number(data.rate) || 0,
+    comment: data.comment || '',
+    date: parsedDate.display
+  });
   return { success: true };
 }
 
