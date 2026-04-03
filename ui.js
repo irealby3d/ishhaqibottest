@@ -49,6 +49,8 @@ window.onload = async () => {
             if (myRole === 'SuperAdmin') document.getElementById('bossNav').classList.remove('hidden');
 
             initMyFilters();
+        } else {
+            showToastMsg('❌ ' + (data.error || 'Init xatosi'), true);
         }
     } catch(e) {
         console.error('Init xato:', e);

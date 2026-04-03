@@ -123,7 +123,7 @@ function getTodayDdMmYyyy(now = new Date()) {
 
 async function apiRequest(payload, opts) {
   const options = opts || {};
-  const timeoutMs = Number(options.timeoutMs) || 15000;
+  const timeoutMs = Number(options.timeoutMs) || 25000;
 
   const body = Object.assign({}, payload || {});
   if (!body.telegramId) body.telegramId = telegramId;
@@ -142,7 +142,8 @@ async function apiRequest(payload, opts) {
   try {
     const res = await fetch(API_URL, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      // IMPORTANT:
+      // Leave Content-Type unset to avoid CORS preflight issues in Telegram WebView.
       body: JSON.stringify(body),
       signal: controller ? controller.signal : undefined
     });
@@ -151,7 +152,12 @@ async function apiRequest(payload, opts) {
       throw new Error('HTTP ' + res.status);
     }
 
-    return await res.json();
+    const text = await res.text();
+    try {
+      return JSON.parse(text);
+    } catch (e) {
+      throw new Error('Server javobi noto\'g\'ri formatda');
+    }
   } catch (err) {
     if (err && err.name === 'AbortError') {
       throw new Error("So'rov vaqti tugadi");
